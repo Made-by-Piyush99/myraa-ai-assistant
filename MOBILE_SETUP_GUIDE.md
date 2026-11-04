@@ -1,155 +1,178 @@
-# 📱 MYRAA Mobile Voice Edition — Complete Step-by-Step Guide
+# 📱 MYRAA Mobile Edition — Termux Step-by-Step Complete Guide
 
-> **Is guide me seekhenge:** Apne Android mobile par Termux ke zariye MYRAA se bina PC ke direct Voice Call / Baatchit kaise karein.
-
----
-
-## 📑 Contents
-1. [Jaruri Cheezein (Prerequisites)](#1-jaruri-cheezein-prerequisites)
-2. [Step 1: Code ko GitHub par Push karein (PC par)](#step-1-code-ko-github-par-push-karein-pc-par)
-3. [Step 2: Mobile me Termux Install & Setup karein](#step-2-mobile-me-termux-install--setup-karein)
-4. [Step 3: GitHub se Code Clone karein & Start karein](#step-3-github-se-code-clone-karein--start-karein)
-5. [Step 4: Chrome me Open karein & Mic Allow karein](#step-4-chrome-me-open-karein--mic-allow-karein)
-6. [Step 5: Apni Gemini API Key dalein](#step-5-apni-gemini-api-key-dalein)
-7. [Step 6: Phone ke Home Screen par App Icon banayein](#step-6-phone-ke-home-screen-par-app-icon-banayein)
-8. [Daily Use (Rozana Kaise Start Karein)](#daily-use-rozana-kaise-start-karein)
-9. [Troubleshooting & FAQs](#troubleshooting--faqs)
+Is guide me bilkul shuruat se step-by-step bataya gaya hai ki:
+- **Termux app kahan se download karna hai**
+- **Install karke pehli baar kya commands chalani hain**
+- **GitHub se code kaise aayega**
+- **Mobile browser me Myraa ko kaise chalana hai**
+- **Daily use kaise karna hai**
 
 ---
 
-## 1. Jaruri Cheezein (Prerequisites)
-- Ek **Android Mobile**.
-- **Termux App** (Play Store wala outdated hai, isliye **F-Droid** se download karein):  
-  👉 [Termux on F-Droid Download Link](https://f-droid.org/en/packages/com.termux/)
-- Ek free **Google Gemini API Key**:  
-  👉 [Google AI Studio](https://aistudio.google.com/) se free me milti hai.
+## ⚠️ Sabse Pehle Jaruri Baat (Google Play Store Se Download Na Karein)
+
+> **Important:** Google Play Store par jo Termux hai wo **outdated** hai aur usme package updates fail ho jate hain.
+> 
+> Hamesha **F-Droid** ya **GitHub Release** se hi Termux download karein. Yeh 100% free, safe aur updated hai.
 
 ---
 
-## Step 1: Code ko GitHub par Push karein (PC par)
+## 📥 STEP 1: Termux App Download Aur Install Karein
 
-Agar aapne abhi tak yeh project apne GitHub account par push nahi kiya hai, toh PC ke terminal me yeh commands chalayein:
-
-```bash
-# Project root directory me:
-git init
-git add .
-git commit -m "Add Mobile Voice Edition and Desktop fixes"
-git branch -M main
-git remote add origin https://github.com/AAPKA_USERNAME/AAPKA_REPO_NAME.git
-git push -u origin main
-```
+1. Apne mobile ke Chrome browser me yeh link kholein:
+   👉 **Direct Download Link (F-Droid):** [https://f-droid.org/repo/com.termux_1020.apk](https://f-droid.org/repo/com.termux_1020.apk)  
+   *(Ya official F-Droid page par jaakar "Download APK" dabayein: [https://f-droid.org/en/packages/com.termux/](https://f-droid.org/en/packages/com.termux/))*
+2. Download complete hone par APK file par tap karke **Install** karein.
+3. Agar phone *"Install unknown apps"* ki permission mange, toh **Allow from this source** par tick karein aur install karein.
 
 ---
 
-## Step 2: Mobile me Termux Install & Setup karein
+## ⚡ STEP 2: Termux Pehli Baar Open Karein & Setup Karein
 
-1. Apne phone me **Termux** app open karein.
-2. Pehli baar Termux me jaruri tools install karne ke liye yeh command copy-paste karein:
-
-```bash
-pkg update -y && pkg upgrade -y
-pkg install nodejs git -y
-```
-
-*(Agar prompt me `[Y/n]` aaye, toh `y` likhkar Enter dabayein).*
-
----
-
-## Step 3: GitHub se Code Clone karein & Start karein
-
-Termux me apna GitHub repo clone karein aur mobile folder me jayein:
-
-```bash
-# 1. Repo clone karein
-git clone https://github.com/AAPKA_USERNAME/AAPKA_REPO_NAME.git
-
-# 2. Mobile folder me jayein
-cd AAPKA_REPO_NAME/mobile
-
-# 3. Termux script ko executable banayein aur start karein
-chmod +x start-termux.sh
-./start-termux.sh
-```
-
-> **Note:** Pehli baar yeh script 10-15 second legi jaruri light packages install karne me, phir terminal me likha aayega:  
-> `🌸 MYRAA Mobile Voice Edition is Ready! 🌸`  
-> `Local URL : http://localhost:3000`
-
----
-
-## Step 4: Chrome me Open karein & Mic Allow karein
-
-1. Apne phone ka **Google Chrome** browser kholein.
-2. Address bar me yeh type karein:
-   ```
-   http://localhost:3000
-   ```
-3. Screen par **Myraa ka glowing orb aur voice screen** dikhegi.
-4. Center ke **Calling / Mic Button** par tap karein.
-5. Chrome aapse **Microphone Permission** mangega -> **"Allow"** select karein.
-
-> [!NOTE]
-> Android Chrome me `http://localhost:3000` secure origin mana jata hai, isliye **Microphone direct chalega** (kisi tunnel ya HTTPS ki zaroorat nahi padegi).
-
----
-
-## Step 5: Apni Gemini API Key dalein
-
-1. Screen ke top-right corner me **Settings Icon (⚙️)** par tap karein.
-2. Apni **Google Gemini API Key** paste karein.
-3. **"Save Key"** button par tap karein.
-4. Yeh key aapke phone me securely save ho jayegi (baar-baar dalne ki zaroorat nahi padegi).
-
----
-
-## Step 6: Phone ke Home Screen par App Icon banayein
-
-Baar-baar Chrome me URL na likhna pade, isliye iska shortcut bana lein:
-
-1. Chrome me top-right me **3 dots (⋮)** par tap karein.
-2. **"Add to Home screen"** (ya **"Install app"**) par tap karein.
-3. Name me **"MYRAA"** rakhein aur Add karein.
-4. Ab aapke phone ki home screen par Myraa ka direct App icon ban jayega!
-
----
-
-## Daily Use (Rozana Kaise Start Karein)
-
-Jab bhi Myraa se baat karni ho:
-
-1. **Termux app open karein** aur likhein:
+1. Apne mobile me **Termux** app open karein. Ek black/green terminal screen dikhegi.
+2. Sabse pehle storage permission lene ke liye yeh command likhein aur Enter dabayein:
    ```bash
-   cd AAPKA_REPO_NAME/mobile
-   node server.js
+   termux-setup-storage
    ```
-2. Home screen par bane **Myraa App icon** par tap karein.
-3. Center button dabayein aur voice baatein shuru karein!
-4. Baatchit khatam hone par Termux me `Ctrl + C` dabakar server stop kar sakte hain.
+   *(Screen par popup aayega — **Allow** par tap karein).*
+
+3. Ab Termux ke basic tools ko update karein:
+   ```bash
+   pkg update -y && pkg upgrade -y
+   ```
+   *(Agar installation ke dauran screen par `[Y/n]` ya `default=N` jaisa sawaal pooche, toh keyboard se bas `y` likhkar **Enter** daba dein).*
+
+> 💡 **Tip (Agar Repository Error aaye):**  
+> Agar kabhi `Repository under maintenance` ka error aaye, toh yeh command run karein:  
+> `termux-change-repo`  
+> Usme pehle option par `OK` dabayein aur `Mirrors by Grimler` ya `Cloudflare` select karke OK kar dein.
 
 ---
 
-## 🌟 Alternate (Bina Termux ke - Free Cloud Hosting)
+## 📦 STEP 3: Node.js Aur Git Install Karein
 
-Agar aap phone me Termux bhi open nahi rakhna chahte aur chahte hain ki Myraa **24/7 bina kisi app ke online rahe**:
+Ab Myraa ko chalane ke liye Node.js aur GitHub se code download karne ke liye Git chahiye.
 
-1. [Render.com](https://render.com/) par free account banayein.
-2. **"New Web Service"** -> apna GitHub repo select karein.
-3. Settings:
-   - **Root Directory:** `mobile`
-   - **Build Command:** `npm install`
-   - **Start Command:** `node server.js`
-   - **Environment Variable:** `GEMINI_API_KEY` = your_api_key
-4. Render aapko ek permanent free link dega: `https://myraa-tech.onrender.com`.
-5. Is link ko phone me bookmark kar lo, jab marzi tap karke baat karo!
+Termux me yeh single command copy-paste karein aur Enter dabayein:
+```bash
+pkg install git nodejs -y
+```
+
+Install hone ke baad verify karne ke liye yeh check kar sakte hain:
+```bash
+node -v
+git --version
+```
+Dono ka version number screen par aa jayega.
 
 ---
 
-## Troubleshooting & FAQs
+## 🚀 STEP 4: GitHub Se Myraa AI Assistant Download Karein
 
-- **Q: Termux me `git clone` karne par permission mangta hai?**  
-  A: Agar private repo hai toh GitHub Personal Access Token (PAT) use karein ya repo ko public rakhein (ensure karein ki `.env` me key na ho).
-- **Q: Chrome me mic sound nahi aa rahi?**  
-  A: Phone ka Media Volume badhayein aur Chrome site settings me jakar Microphone permission "Allowed" check karein.
-- **Q: Screen band hone par Termux close ho jata hai?**  
-  A: Termux notification bar me swipe down karein aur **"Acquire Wakelock"** par tap karein taaki background me process alive rahe.
+Aapka code GitHub par live hai. Termux me bas yeh command run karein:
+
+```bash
+git clone https://github.com/Made-by-Piyush99/myraa-ai-assistant.git
+```
+
+Clone complete hone ke baad mobile folder ke andar jayein:
+```bash
+cd myraa-ai-assistant/mobile
+```
+
+Ab project ke packages install karein:
+```bash
+npm install
+```
+*(Yeh kuch seconds me sabhi lightweight packages install kar dega).*
+
+---
+
+## 🟢 STEP 5: Server Start Karein
+
+Ab Myraa ka server start karne ke liye bas yeh run karein:
+
+```bash
+bash start-termux.sh
+```
+*(Ya direct `node server.js` likhkar bhi start kar sakte hain).*
+
+Termux screen par yeh likha hua aa jayega:
+```
+======================================================
+  🌸 MYRAA Mobile Voice Edition
+======================================================
+  Local URL (On this Phone):  http://localhost:3000
+======================================================
+```
+Iska matlab aapka server mobile par successfully live ho gaya hai!
+
+---
+
+## 🌐 STEP 6: Mobile Chrome Me Open Karein & Baatchit Shuru Karein
+
+1. Termux ko band mat karna (sirf home button daba kar background me rehne dein).
+2. Apne mobile me **Google Chrome** open karein.
+3. Address bar me yeh URL type karein:
+   👉 **`http://localhost:3000`**
+4. Screen par Myraa ka visual interface khul jayega:
+   - Agar pehli baar khol rahe hain, toh **API Key Prompt** aayega.
+   - Apni free Google Gemini API Key ([Google AI Studio](https://aistudio.google.com/) se) paste karke **Save** karein.
+5. Ab **🎙️ Tap to Speak** button dabayein:
+   - Chrome aapse **Microphone** ki permission mangega -> **Allow** par tap karein.
+6. Ab Myraa se Hindi ya English me bolna shuru karein!
+   - *"Namaste Myraa, kaisi ho?"*
+   - *"Play Believer song on YouTube"*
+   - *"Mujhe koi acchi kahani sunao"*
+
+---
+
+## 📲 STEP 7: Phone Ki Home Screen Par App Jaisa Icon Banayein
+
+Baar-baar browser me `http://localhost:3000` type na karna pade:
+1. Chrome browser me jab Myraa khuli ho, right-top corner me **3 Dots (⋮)** par click karein.
+2. Menu me se **"Add to Home screen"** ya **"Install App"** par click karein.
+3. Ab aapke mobile ke home screen par Myraa ka sundar App icon ban jayega!
+
+---
+
+## 🔋 STEP 8: Battery Optimization Off Karein (Taaki Background Me Band Na Ho)
+
+Android phone kabhi-kabhi background apps ko battery bachane ke liye band kar deta hai:
+1. Phone ki **Settings** me jayein -> **Apps** -> **Termux**.
+2. **Battery** par tap karein aur **"Unrestricted"** (ya "No restrictions / Don't optimize") select karein.
+3. Ab screen lock hone par ya background me hone par bhi Myraa bina ruke chalti rahegi!
+
+---
+
+## ☀️ DAILY USE (Rozana Kaise Start Karein — Sirf 2 Seconds)
+
+Jab bhi aapko mobile par Myraa ko dobara chalana ho:
+1. **Termux app open karein** aur bas yeh likhkar Enter dabayein:
+   ```bash
+   cd myraa-ai-assistant/mobile && node server.js
+   ```
+2. Apne mobile screen par Myraa ke shortcut icon par tap karein aur baatchit shuru karein!
+3. Server band karna ho toh Termux me keyboard se `Ctrl + C` dabayein.
+
+---
+
+## 🛠️ Common Problems & Solutions (Troubleshooting)
+
+### Problem 1: `Port 3000 already in use` error
+- **Reason:** Puraana server background me chal raha hai.
+- **Solution:** Termux me yeh command chalayein:
+  ```bash
+  killall node
+  node server.js
+  ```
+
+### Problem 2: Microphone ki aawaz nahi aa rahi
+- **Solution:** Chrome ki Site settings me jayein:
+  `Settings` -> `Site settings` -> `Microphone` -> `http://localhost:3000` ko **Allow** karein.
+
+### Problem 3: Termux me code update kaise karein (Latest changes pane ke liye)
+- Jab bhi GitHub par naya code aaye, Termux me yeh command run karein:
+  ```bash
+  cd ~/myraa-ai-assistant && git pull
+  ```
