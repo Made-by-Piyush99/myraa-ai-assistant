@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+mobile/node_modules/
+jiopc/node_modules/
+
+# Build and distribution artifacts
+build/
+dist/
+release/
+agent_dist/
+agent_build/
+__pycache__/
+*.pyc
+
+# Heavy executables (exceeds GitHub 100MB limit)
+*.exe
+*.msi
+*.7z
+*.zip
+*.blockmap*
+
+# Sensitive data and local secrets
+.env
+.env.*
+!.env.example
+secrets.json
+mobile/secrets.json
+jiopc/secrets.json
+
+# Logs and system files
+*.log
+logs/
+.DS_Store
+Thumbs.db

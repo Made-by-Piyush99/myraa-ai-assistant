@@ -1,0 +1,16 @@
+{
+  "name": "myraa-jiopc-tv-edition",
+  "version": "1.0.0",
+  "description": "MYRAA Jio PC & Jio TV Set-Top Box Edition — 10-foot living room AI voice companion, remote control navigation & YouTube TV hub",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "ws": "^8.21.0"
+  }
+}

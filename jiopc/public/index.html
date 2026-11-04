@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MYRAA — Jio PC & TV Edition</title>
+  <style>
+    :root {
+      --bg: #070913;
+      --card-bg: rgba(18, 22, 40, 0.85);
+      --card-border: rgba(99, 102, 241, 0.25);
+      --accent: #8b5cf6;
+      --accent-glow: rgba(139, 92, 246, 0.5);
+      --cyan: #06b6d4;
+      --cyan-glow: rgba(6, 182, 212, 0.4);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --focus-ring: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 10%, #15103a 0%, var(--bg) 70%);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      font-size: 18px; /* 10-foot TV viewing scale */
+      user-select: none;
+    }
+
+    /* Focus indicators for Jio TV Remote Navigation */
+    button:focus, input:focus, .tv-nav:focus {
+      outline: 4px solid var(--focus-ring) !important;
+      outline-offset: 4px;
+      transform: scale(1.05);
+      box-shadow: 0 0 25px var(--cyan-glow);
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      min-height: 100vh;
+    }
+
+    /* Header Bar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, #ec4899, #8b5cf6);
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 28px;
+      box-shadow: 0 0 20px rgba(236, 72, 153, 0.4);
+    }
+
+    .brand-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      background: linear-gradient(90deg, #fff, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-tag {
+      font-size: 14px;
+      color: #38bdf8;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .clock {
+      font-size: 24px;
+      font-weight: 700;
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 8px 18px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    /* Main Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      flex: 1;
+    }
+
+    @media (max-width: 1100px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Left Card: Hologram & Voice Assistant */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 30px;
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+
+    .hologram-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      min-height: 280px;
+      position: relative;
+    }
+
+    .orb {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ec4899, #8b5cf6 60%, #3b82f6);
+      box-shadow: 0 0 60px var(--accent-glow), 0 0 100px rgba(236, 72, 153, 0.3);
+      position: relative;
+      animation: pulse 3s infinite ease-in-out;
+      transition: all 0.3s ease;
+    }
+
+    .orb.talking {
+      animation: speakPulse 0.6s infinite alternate ease-in-out;
+      box-shadow: 0 0 80px #ec4899, 0 0 120px rgba(6, 182, 212, 0.8);
+      transform: scale(1.1);
+    }
+
+    .orb.listening {
+      animation: listenPulse 1s infinite alternate ease-in-out;
+      box-shadow: 0 0 80px #06b6d4, 0 0 120px rgba(56, 189, 248, 0.8);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); filter: brightness(1); }
+      50% { transform: scale(1.05); filter: brightness(1.2); }
+    }
+
+    @keyframes speakPulse {
+      0% { transform: scale(1.05); filter: hue-rotate(0deg); }
+      100% { transform: scale(1.18); filter: hue-rotate(30deg); }
+    }
+
+    @keyframes listenPulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.12); }
+    }
+
+    .voice-status {
+      margin-top: 24px;
+      font-size: 22px;
+      font-weight: 700;
+      color: #e2e8f0;
+      text-align: center;
+    }
+
+    .sub-status {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    /* Subtitles / Transcription */
+    .dialogue-box {
+      margin-top: 20px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 16px;
+      padding: 16px 20px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      min-height: 80px;
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    /* Remote & Mic Controls */
+    .controls-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 20px;
+      justify-content: center;
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #fff;
+      border: none;
+      padding: 16px 28px;
+      border-radius: 18px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn:hover {
+      filter: brightness(1.15);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: none;
+    }
+
+    .btn-mic.active {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      animation: pulse 1s infinite alternate;
+    }
+
+    /* Right Card: YouTube TV Player */
+    .tv-player-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .tv-player-title {
+      font-size: 22px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #f43f5e;
+    }
+
+    .video-container {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      background: #000;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .video-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .player-empty {
+      color: var(--text-muted);
+      text-align: center;
+      font-size: 18px;
+      padding: 20px;
+    }
+
+    /* TV Quick Recommendation Chips */
+    .quick-chips {
+      margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .chip:hover {
+      background: rgba(139, 92, 246, 0.25);
+      border-color: #8b5cf6;
+    }
+
+    /* Remote Navigation Guide at bottom */
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+
+    .remote-keys {
+      display: flex;
+      gap: 16px;
+    }
+
+    .key-badge {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-family: monospace;
+      color: #fff;
+    }
+
+    /* API Key Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #111528;
+      border: 2px solid var(--accent);
+      border-radius: 24px;
+      padding: 36px;
+      max-width: 600px;
+      width: 90%;
+      box-shadow: 0 0 50px rgba(139, 92, 246, 0.4);
+    }
+
+    .modal h2 {
+      font-size: 26px;
+      margin-bottom: 12px;
+      color: #c084fc;
+    }
+
+    .modal p {
+      font-size: 16px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .modal input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      padding: 16px;
+      color: #fff;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="logo-badge">🌸</div>
+        <div>
+          <div class="brand-title">MYRAA</div>
+          <div class="brand-tag">Jio PC & Jio TV Set-Top Box Edition</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="clock" id="clock">--:--</div>
+        <div class="status-badge">
+          <span class="status-dot"></span>
+          <span id="connStatus">TV Sync Ready</span>
+        </div>
+        <button class="btn btn-secondary tv-nav" id="fsBtn" tabindex="0">📺 Fullscreen</button>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+      <!-- Left Card: Hologram & Voice AI -->
+      <div class="card">
+        <div class="hologram-stage">
+          <div class="orb" id="orb"></div>
+          <div class="voice-status" id="voiceStatus">Listening on Jio TV...</div>
+          <div class="sub-status" id="voiceSub">Speak naturally through your TV Remote or USB mic</div>
+        </div>
+
+        <div class="dialogue-box" id="dialogue">
+          <span style="color: #94a3b8;">🌸 Myraa: Namaste! Me aapke Jio TV par ready hu. Kahiye me aapke liye kya gana ya jankari nikaalu?</span>
+        </div>
+
+        <div class="controls-row">
+          <button class="btn btn-mic tv-nav" id="micBtn" tabindex="0">🎙️ Tap to Speak</button>
+          <button class="btn btn-secondary tv-nav" id="settingsBtn" tabindex="0">⚙️ Settings</button>
+        </div>
+      </div>
+
+      <!-- Right Card: YouTube TV Hub -->
+      <div class="card">
+        <div class="tv-player-header">
+          <div class="tv-player-title">
+            <span>📺</span>
+            <span>YouTube TV Media Center</span>
+          </div>
+          <div style="font-size: 14px; color: var(--text-muted);">Autoplay On</div>
+        </div>
+
+        <div class="video-container" id="videoContainer">
+          <div class="player-empty" id="playerPlaceholder">
+            🎵 Bolye: <i>"Myraa, Arijit Singh ke gane chalao"</i> ya <i>"Play Lo-Fi Music"</i><br><br>
+            Video yaha automatically full TV screen par play hogi!
+          </div>
+          <iframe id="ytFrame" style="display: none;" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+
+        <div class="quick-chips">
+          <button class="chip tv-nav" data-query="Trending Bollywood Songs 2026" tabindex="0">🔥 Trending Songs</button>
+          <button class="chip tv-nav" data-query="Lofi hip hop beats to relax study to" tabindex="0">🎧 Chill Lo-Fi</button>
+          <button class="chip tv-nav" data-query="Latest movie trailers 2026" tabindex="0">🎬 Movie Trailers</button>
+          <button class="chip tv-nav" data-query="Hindi Standup Comedy" tabindex="0">😂 Standup Comedy</button>
+          <button class="chip tv-nav" data-query="AI news and future technology" tabindex="0">🤖 AI & Tech</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remote Navigation Guide Footer -->
+    <footer>
+      <div>Designed for <b>JioPC</b> & <b>JioFiber Set-Top Box</b> Living Room Experience</div>
+      <div class="remote-keys">
+        <span><span class="key-badge">▲ ▼ ◀ ▶</span> Remote D-Pad</span>
+        <span><span class="key-badge">OK</span> Select</span>
+        <span><span class="key-badge">Back</span> Return</span>
+        <span><span class="key-badge">F11</span> Fullscreen</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- API Key Modal -->
+  <div class="modal-overlay" id="apiModal">
+    <div class="modal">
+      <h2>🔑 Gemini API Key Required</h2>
+      <p>Myraa uses Google Gemini Live for voice conversations on your Jio TV. Please paste your free Google AI Studio API key below:</p>
+      <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="tv-nav" tabindex="0" />
+      <div style="display: flex; gap: 14px; justify-content: flex-end;">
+        <button class="btn tv-nav" id="saveKeyBtn" tabindex="0">Save Key</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Live Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Elements
+    const orb = document.getElementById('orb');
+    const voiceStatus = document.getElementById('voiceStatus');
+    const dialogue = document.getElementById('dialogue');
+    const micBtn = document.getElementById('micBtn');
+    const ytFrame = document.getElementById('ytFrame');
+    const playerPlaceholder = document.getElementById('playerPlaceholder');
+    const fsBtn = document.getElementById('fsBtn');
+    const apiModal = document.getElementById('apiModal');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const saveKeyBtn = document.getElementById('saveKeyBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+
+    // Fullscreen Toggle
+    fsBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    // API Key Gate
+    async function checkApiKey() {
+      try {
+        const res = await fetch('/api/config');
+        const data = await res.json();
+        if (!data.hasApiKey) {
+          apiModal.classList.add('open');
+        } else {
+          initLiveSocket();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    saveKeyBtn.addEventListener('click', async () => {
+      const key = apiKeyInput.value.trim();
+      if (!key) return;
+      const res = await fetch('/api/config/apikey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: key })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        apiModal.classList.remove('open');
+        initLiveSocket();
+      }
+    });
+
+    settingsBtn.addEventListener('click', () => {
+      apiModal.classList.add('open');
+    });
+
+    // TV Remote D-Pad Navigation Management
+    window.addEventListener('keydown', (e) => {
+      const navElements = Array.from(document.querySelectorAll('.tv-nav'));
+      const active = document.activeElement;
+      const idx = navElements.indexOf(active);
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        if (idx < navElements.length - 1) {
+          navElements[idx + 1].focus();
+          e.preventDefault();
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        if (idx > 0) {
+          navElements[idx - 1].focus();
+          e.preventDefault();
+        }
+      }
+    });
+
+    // YouTube TV Player helper
+    function playVideo(videoId) {
+      if (!videoId) return;
+      playerPlaceholder.style.display = 'none';
+      ytFrame.style.display = 'block';
+      ytFrame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
+    }
+
+    // Quick Chips click
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', async () => {
+        const query = chip.dataset.query;
+        voiceStatus.textContent = `Searching: ${query}`;
+        try {
+          const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
+          const data = await res.json();
+          if (data.ok && data.videoId) {
+            playVideo(data.videoId);
+            dialogue.innerHTML = `<span style="color: #38bdf8;">▶️ Now Playing: <b>${query}</b></span>`;
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      });
+    });
+
+    // Audio In/Out Streaming
+    let ws = null;
+    let audioCtx = null;
+    let isListening = false;
+    let micStream = null;
+    let processor = null;
+    let nextPlayTime = 0;
+
+    function initAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function initLiveSocket() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${proto}//${location.host}/live`);
+
+      ws.onopen = () => {
+        document.getElementById('connStatus').textContent = 'Live Connected';
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === 'ready') {
+          voiceStatus.textContent = 'Myraa is Ready on TV';
+        } else if (msg.type === 'audio' && msg.data) {
+          orb.classList.add('talking');
+          orb.classList.remove('listening');
+          voiceStatus.textContent = 'Myraa is speaking...';
+          playPcmBase64(msg.data);
+        } else if (msg.type === 'turnComplete') {
+          setTimeout(() => {
+            orb.classList.remove('talking');
+            if (!isListening) voiceStatus.textContent = 'Listening on Jio TV...';
+          }, 800);
+        } else if (msg.type === 'transcription' && msg.text) {
+          dialogue.innerHTML = `<span style="color: #ec4899;"><b>Myraa:</b> ${msg.text}</span>`;
+        } else if (msg.type === 'tv_action') {
+          if (msg.action === 'play_youtube' && msg.videoId) {
+            playVideo(msg.videoId);
+            dialogue.innerHTML = `<span style="color: #38bdf8;">▶️ Playing on TV: <b>${msg.query}</b></span>`;
+          }
+        }
+      };
+
+      ws.onclose = () => {
+        document.getElementById('connStatus').textContent = 'Disconnected';
+        setTimeout(initLiveSocket, 3000);
+      };
+    }
+
+    function playPcmBase64(base64Data) {
+      initAudioContext();
+      const binaryString = atob(base64Data);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const int16Array = new Int16Array(bytes.buffer);
+      const float32Array = new Float32Array(int16Array.length);
+      for (let i = 0; i < int16Array.length; i++) {
+        float32Array[i] = int16Array[i] / 32768.0;
+      }
+
+      const audioBuffer = audioCtx.createBuffer(1, float32Array.length, 24000);
+      audioBuffer.getChannelData(0).set(float32Array);
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+
+      const currentTime = audioCtx.currentTime;
+      if (nextPlayTime < currentTime) nextPlayTime = currentTime;
+      source.start(nextPlayTime);
+      nextPlayTime += audioBuffer.duration;
+    }
+
+    // Microphone Capture (16kHz PCM)
+    async function toggleMic() {
+      initAudioContext();
+      if (isListening) {
+        stopMic();
+      } else {
+        startMic();
+      }
+    }
+
+    async function startMic() {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } });
+        const sourceCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        const input = sourceCtx.createMediaStreamSource(micStream);
+        processor = sourceCtx.createScriptProcessor(4096, 1, 1);
+
+        processor.onaudioprocess = (e) => {
+          if (!ws || ws.readyState !== WebSocket.OPEN) return;
+          const inputData = e.inputBuffer.getChannelData(0);
+          const int16Array = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          const bytes = new Uint8Array(int16Array.buffer);
+          let binary = '';
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          const base64 = btoa(binary);
+          ws.send(JSON.stringify({ type: 'audio_chunk', data: base64 }));
+        };
+
+        input.connect(processor);
+        processor.connect(sourceCtx.destination);
+
+        isListening = true;
+        micBtn.classList.add('active');
+        micBtn.textContent = '⏹️ Stop Listening';
+        orb.classList.add('listening');
+        voiceStatus.textContent = 'Listening to your voice...';
+      } catch (err) {
+        alert('Microphone access needed on Jio TV/JioPC: ' + err.message);
+      }
+    }
+
+    function stopMic() {
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
+      if (processor) {
+        processor.disconnect();
+        processor = null;
+      }
+      isListening = false;
+      micBtn.classList.remove('active');
+      micBtn.textContent = '🎙️ Tap to Speak';
+      orb.classList.remove('listening');
+      voiceStatus.textContent = 'Listening on Jio TV...';
+    }
+
+    micBtn.addEventListener('click', toggleMic);
+
+    // Initial check
+    checkApiKey();
+  </script>
+</body>
+</html>

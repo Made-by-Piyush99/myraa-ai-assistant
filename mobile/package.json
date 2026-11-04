@@ -1,0 +1,16 @@
+{
+  "name": "myraa-mobile-voice",
+  "version": "1.0.0",
+  "description": "MYRAA Mobile Voice Edition — Lightweight Gemini Live Voice Companion for Android, Termux & Cloud",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "ws": "^8.21.0"
+  }
+}
