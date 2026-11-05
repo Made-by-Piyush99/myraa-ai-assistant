@@ -42,6 +42,12 @@ class MyraaMobileClient {
   }
 
   initDOMElements() {
+    // Character Anime Video Avatar
+    this.videoIdle = document.getElementById("videoIdle");
+    this.videoThinking = document.getElementById("videoThinking");
+    this.videoTalking = document.getElementById("videoTalking");
+    this.ambientGlow = document.getElementById("ambientGlow");
+
     // Stage & Controls
     this.btnToggleCall = document.getElementById("btnToggleCall");
     this.iconMic = document.getElementById("iconMic");
@@ -796,25 +802,62 @@ class MyraaMobileClient {
     this.nextPlayTime = 0;
   }
 
+  setVideoState(state) {
+    // state: 'idle' | 'thinking' | 'talking'
+    const videos = {
+      idle: this.videoIdle,
+      thinking: this.videoThinking,
+      talking: this.videoTalking
+    };
+
+    Object.entries(videos).forEach(([key, video]) => {
+      if (!video) return;
+      if (key === state) {
+        video.classList.add("active");
+        video.play().catch(() => {});
+      } else {
+        video.classList.remove("active");
+      }
+    });
+
+    if (this.ambientGlow) {
+      if (state === "talking") {
+        this.ambientGlow.style.background = "radial-gradient(circle, rgba(16, 185, 129, 0.45) 0%, rgba(56, 189, 248, 0.25) 50%, transparent 70%)";
+      } else if (state === "thinking") {
+        this.ambientGlow.style.background = "radial-gradient(circle, rgba(168, 85, 247, 0.45) 0%, rgba(236, 72, 153, 0.25) 50%, transparent 70%)";
+      } else {
+        this.ambientGlow.style.background = "radial-gradient(circle, rgba(192, 132, 252, 0.35) 0%, rgba(56, 189, 248, 0.15) 50%, transparent 70%)";
+      }
+    }
+  }
+
   setState(newState) {
     this.state = newState;
     this.statusDot.className = "status-dot " + (newState === "idle" ? "" : newState);
-    this.orbGlow.className = "orb-glow " + (newState === "idle" ? "" : newState);
+    if (this.orbGlow) {
+      this.orbGlow.className = "orb-glow " + (newState === "idle" ? "" : newState);
+    }
 
     if (newState === "speaking") {
       this.statusDot.classList.add("speaking");
       this.speakingBadge?.classList.remove("hidden");
       this.statusText.textContent = "Myraa is speaking...";
+      this.setVideoState("talking");
+    } else if (newState === "connecting") {
+      this.statusDot.classList.remove("speaking");
+      this.speakingBadge?.classList.add("hidden");
+      this.statusText.textContent = "Connecting to Myraa...";
+      this.setVideoState("thinking");
+    } else if (newState === "listening") {
+      this.statusDot.classList.remove("speaking");
+      this.speakingBadge?.classList.add("hidden");
+      this.statusText.textContent = "Listening to you...";
+      this.setVideoState("idle");
     } else {
       this.statusDot.classList.remove("speaking");
       this.speakingBadge?.classList.add("hidden");
-      if (newState === "listening") {
-        this.statusText.textContent = "Listening to you...";
-      } else if (newState === "connecting") {
-        this.statusText.textContent = "Connecting to Myraa...";
-      } else if (newState === "idle") {
-        this.statusText.textContent = "Tap to Connect";
-      }
+      this.statusText.textContent = "Tap to Connect";
+      this.setVideoState("idle");
     }
   }
 

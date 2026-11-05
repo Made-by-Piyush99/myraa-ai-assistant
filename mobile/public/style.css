@@ -157,6 +157,58 @@ html, body {
   z-index: 10;
 }
 
+/* Character Anime Video Avatar */
+.avatar-video-wrapper {
+  position: relative;
+  width: min(78vw, 290px);
+  height: min(78vw, 290px);
+  max-width: 310px;
+  max-height: 310px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-bottom: 8px;
+}
+
+.ambient-glow-circle {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(192, 132, 252, 0.4) 0%, rgba(56, 189, 248, 0.2) 50%, transparent 70%);
+  filter: blur(28px);
+  pointer-events: none;
+  z-index: 1;
+  transition: all 0.6s ease;
+  animation: glowFloat 4s infinite ease-in-out;
+}
+
+@keyframes glowFloat {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+.character-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.5s ease-in-out;
+  mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 56%, rgba(0, 0, 0, 0) 78%);
+  -webkit-mask-image: radial-gradient(circle, rgba(0, 0, 0, 1) 56%, rgba(0, 0, 0, 0) 78%);
+}
+
+.character-video.active {
+  opacity: 1;
+  z-index: 3;
+}
+
 .orb-glow {
   width: 140px;
   height: 140px;

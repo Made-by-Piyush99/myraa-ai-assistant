@@ -39,12 +39,44 @@
       </div>
     </header>
 
-    <!-- Center Stage: Holographic Orb & Particle Canvas -->
+    <!-- Center Stage: Holographic Video Avatar & Particle Canvas -->
     <main class="visualizer-stage">
       <canvas id="visualizerCanvas"></canvas>
       
       <div class="avatar-ring-container">
-        <div id="orbGlow" class="orb-glow"></div>
+        <!-- Character Video Avatar (Desktop parity: Idle, Thinking, Talking) -->
+        <div class="avatar-video-wrapper">
+          <div class="ambient-glow-circle" id="ambientGlow"></div>
+
+          <video
+            id="videoIdle"
+            src="/assets/idle.mp4"
+            loop
+            muted
+            playsinline
+            autoplay
+            class="character-video active"
+          ></video>
+
+          <video
+            id="videoThinking"
+            src="/assets/thinking.mp4"
+            loop
+            muted
+            playsinline
+            class="character-video"
+          ></video>
+
+          <video
+            id="videoTalking"
+            src="/assets/talking.mp4"
+            loop
+            muted
+            playsinline
+            class="character-video"
+          ></video>
+        </div>
+
         <div class="status-indicator">
           <span id="statusDot" class="status-dot"></span>
           <span id="statusText" class="status-label">Tap to Connect</span>
