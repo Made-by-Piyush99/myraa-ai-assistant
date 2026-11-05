@@ -127,13 +127,23 @@ app.post("/api/config/apikey", (req, res) => {
 
 // 3. Live API Key Test Endpoint (Updated for Gemini 3.8 Flash & Smart Fallback)
 app.post("/api/config/test", async (req, res) => {
-  const keyToTest = (req.body?.apiKey || "").trim() || getApiKey();
+  let keyToTest = (req.body?.apiKey || "").trim() || getApiKey();
+  keyToTest = keyToTest.replace(/^["']|["']$/g, "").trim();
+
   if (!keyToTest) {
     return res.status(400).json({ ok: false, error: "No API key provided to test. Please enter a key." });
   }
 
+  // Pre-check for invalid token formats like AQ.
+  if (keyToTest.startsWith("AQ.")) {
+    return res.status(400).json({
+      ok: false,
+      error: "Aapne jo key daali hai woh 'AQ.' se shuru ho rahi hai (yeh Google Gemini API Key nahi hai). Google Gemini API Key hamesha 'AIzaSy...' se shuru hoti hai. Kripya Google AI Studio (https://aistudio.google.com/app/apikey) se free Gemini API key banakar dalein."
+    });
+  }
+
   const startTime = Date.now();
-  const testModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"];
+  const testModels = ["gemini-3.8-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"];
   let testResp = null;
   let successfulModel = "";
   let lastErr = null;
@@ -188,8 +198,13 @@ app.post("/api/config/test", async (req, res) => {
       /* not json */
     }
 
-    if (cleanError.includes("API_KEY_INVALID") || cleanError.includes("API key not valid")) {
-      cleanError = "Invalid API Key: Please check your key from Google AI Studio (https://aistudio.google.com/).";
+    if (
+      cleanError.includes("API_KEY_INVALID") ||
+      cleanError.includes("API key not valid") ||
+      cleanError.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED") ||
+      cleanError.includes("UNAUTHENTICATED")
+    ) {
+      cleanError = "Invalid API Key: Google Gemini API key hamesha 'AIzaSy...' se shuru hoti hai. Kripya https://aistudio.google.com/app/apikey se apni key copy karke dalein.";
     }
 
     console.error(`[API Test] Failed in ${latencyMs}ms:`, cleanError);
@@ -341,7 +356,7 @@ wss.on("connection", async (clientWs) => {
 
     let session = null;
     let connectedLiveModel = "";
-    const candidateLiveModels = ["gemini-3.1-flash-live-preview", "gemini-3.8-live"];
+    const candidateLiveModels = ["gemini-3.8-live", "gemini-3.1-flash-live-preview"];
 
     // Direct callback handlers for the official @google/genai JS Live session
     const liveCallbacks = {
