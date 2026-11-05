@@ -239,19 +239,31 @@ class MyraaMobileClient {
       const data = await res.json();
 
       if (data.ok) {
+        const modelName = data.model || "Gemini 3.8 Flash";
         this.testResultBox.className = "test-result-box success";
         this.testResultBox.innerHTML = `
           <div style="font-weight: 600;">✅ Connection Successful!</div>
           <div style="font-size: 0.8rem; margin-top: 4px; opacity: 0.9;">
-            Verified with Gemini 2.5 Flash in <strong>${data.latencyMs}ms</strong>. Key is valid and active.
+            Verified with <strong>${modelName}</strong> in <strong>${data.latencyMs}ms</strong>. Key is valid and active.
           </div>
         `;
       } else {
+        let errDisplay = data.error || "Could not authenticate key.";
+        try {
+          const parsed = typeof errDisplay === "string" ? JSON.parse(errDisplay) : errDisplay;
+          if (parsed?.error?.message) {
+            errDisplay = parsed.error.message;
+          }
+        } catch {}
+
         this.testResultBox.className = "test-result-box error";
         this.testResultBox.innerHTML = `
           <div style="font-weight: 600;">❌ Test Failed</div>
-          <div style="font-size: 0.8rem; margin-top: 4px; word-break: break-word;">
-            ${data.error || "Could not authenticate key."}
+          <div style="font-size: 0.8rem; margin-top: 4px; word-break: break-word; line-height: 1.4;">
+            ${errDisplay}
+          </div>
+          <div style="font-size: 0.75rem; margin-top: 6px; color: #fca5a5;">
+            💡 Tip: Make sure your key is from <a href="https://aistudio.google.com/" target="_blank" style="color: #93c5fd; text-decoration: underline;">Google AI Studio</a>.
           </div>
         `;
       }

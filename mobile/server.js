@@ -125,7 +125,7 @@ app.post("/api/config/apikey", (req, res) => {
   res.json({ ok: true, hasApiKey: Boolean(getApiKey()), voice: getSelectedVoice() });
 });
 
-// 3. Live API Key Test Endpoint (Requested by user)
+// 3. Live API Key Test Endpoint (Updated for Gemini 3.8 Flash & Smart Fallback)
 app.post("/api/config/test", async (req, res) => {
   const keyToTest = (req.body?.apiKey || "").trim() || getApiKey();
   if (!keyToTest) {
@@ -133,30 +133,69 @@ app.post("/api/config/test", async (req, res) => {
   }
 
   const startTime = Date.now();
+  const testModels = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-2.5-flash"];
+  let testResp = null;
+  let successfulModel = "";
+  let lastErr = null;
+
   try {
     const ai = new GoogleGenAI({ apiKey: keyToTest });
-    // Quick test against standard Gemini model
-    const testResp = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: "Respond with the single word 'OK'."
-    });
+
+    for (const mod of testModels) {
+      try {
+        testResp = await ai.models.generateContent({
+          model: mod,
+          contents: "Respond with the single word 'OK'."
+        });
+        successfulModel = mod;
+        break;
+      } catch (e) {
+        lastErr = e;
+        const errMsg = e.message || String(e);
+        // If model not found or unavailable for new users, try the next model candidate
+        if (errMsg.includes("404") || errMsg.includes("NOT_FOUND") || errMsg.includes("not available")) {
+          console.warn(`[API Test] Model '${mod}' unavailable, trying next candidate...`);
+          continue;
+        }
+        // If it's an authentication error (invalid key, forbidden, etc.), fail immediately
+        break;
+      }
+    }
+
+    if (!testResp) {
+      throw lastErr || new Error("Failed to connect to Google Gemini models.");
+    }
 
     const latencyMs = Date.now() - startTime;
     const replyText = testResp.text ? testResp.text.trim() : "OK";
 
-    console.log(`[API Test] Success in ${latencyMs}ms:`, replyText);
+    console.log(`[API Test] Success with ${successfulModel} in ${latencyMs}ms:`, replyText);
     res.json({
       ok: true,
       message: "API Key is valid and active!",
       latencyMs,
-      model: "gemini-2.5-flash"
+      model: successfulModel
     });
   } catch (err) {
     const latencyMs = Date.now() - startTime;
-    console.error(`[API Test] Failed in ${latencyMs}ms:`, err.message || err);
+    let cleanError = err.message || "Failed to authenticate with Google Gemini API.";
+    try {
+      const parsed = JSON.parse(cleanError);
+      if (parsed?.error?.message) {
+        cleanError = parsed.error.message;
+      }
+    } catch {
+      /* not json */
+    }
+
+    if (cleanError.includes("API_KEY_INVALID") || cleanError.includes("API key not valid")) {
+      cleanError = "Invalid API Key: Please check your key from Google AI Studio (https://aistudio.google.com/).";
+    }
+
+    console.error(`[API Test] Failed in ${latencyMs}ms:`, cleanError);
     res.json({
       ok: false,
-      error: err.message || "Failed to authenticate with Google Gemini API.",
+      error: cleanError,
       latencyMs
     });
   }
@@ -258,53 +297,71 @@ wss.on("connection", async (clientWs) => {
     const memories = loadMemories();
     const systemInstruction = formatSystemInstructionsWithMemories(MYRAA_BASE_PROMPT, memories);
 
-    // Official @google/genai Live Session
-    const session = await ai.live.connect({
-      model: "gemini-3.1-flash-live-preview",
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: voiceName || "Aoede"
-            }
+    // Official @google/genai Live Session with multi-model fallback (Gemini 3.8 Live -> 3.1 Flash Live Preview)
+    const liveConfig = {
+      responseModalities: [Modality.AUDIO],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: {
+            voiceName: voiceName || "Aoede"
           }
-        },
-        systemInstruction,
-        tools: [
-          {
-            functionDeclarations: [
-              {
-                name: "playYouTubeMusic",
-                description: "Plays any song, track, music, or video on YouTube. Call this when the user asks to play music, play a song, or watch a video clip.",
-                parameters: {
-                  type: Type.OBJECT,
-                  properties: {
-                    query: { type: Type.STRING, description: "The song title or artist to play." }
-                  },
-                  required: ["query"]
-                }
-              },
-              {
-                name: "saveCustomMemory",
-                description: "Saves a new fact, preference, user detail, or personal goal into Myraa's persistent memory.",
-                parameters: {
-                  type: Type.OBJECT,
-                  properties: {
-                    category: { type: Type.STRING, description: "Category: 'identity', 'preference', 'goal', 'project', or 'general'." },
-                    text: { type: Type.STRING, description: "The memory fact to remember." }
-                  },
-                  required: ["category", "text"]
-                }
+        }
+      },
+      systemInstruction,
+      tools: [
+        {
+          functionDeclarations: [
+            {
+              name: "playYouTubeMusic",
+              description: "Plays any song, track, music, or video on YouTube. Call this when the user asks to play music, play a song, or watch a video clip.",
+              parameters: {
+                type: Type.OBJECT,
+                properties: {
+                  query: { type: Type.STRING, description: "The song title or artist to play." }
+                },
+                required: ["query"]
               }
-            ]
-          }
-        ]
-      }
-    });
+            },
+            {
+              name: "saveCustomMemory",
+              description: "Saves a new fact, preference, user detail, or personal goal into Myraa's persistent memory.",
+              parameters: {
+                type: Type.OBJECT,
+                properties: {
+                  category: { type: Type.STRING, description: "Category: 'identity', 'preference', 'goal', 'project', or 'general'." },
+                  text: { type: Type.STRING, description: "The memory fact to remember." }
+                },
+                required: ["category", "text"]
+              }
+            }
+          ]
+        }
+      ]
+    };
 
-    console.log("[Mobile Live] Gemini Live session connected successfully!");
-    clientWs.send(JSON.stringify({ type: "status", status: "ready", voice: voiceName }));
+    let session = null;
+    let connectedLiveModel = "";
+    const candidateLiveModels = ["gemini-3.8-live", "gemini-3.1-flash-live-preview"];
+
+    for (const lm of candidateLiveModels) {
+      try {
+        session = await ai.live.connect({
+          model: lm,
+          config: liveConfig
+        });
+        connectedLiveModel = lm;
+        break;
+      } catch (liveErr) {
+        console.warn(`[Mobile Live] Connecting with ${lm} failed: ${liveErr.message || liveErr}. Trying next...`);
+      }
+    }
+
+    if (!session) {
+      throw new Error("Could not connect to Gemini Live models (gemini-3.8-live / gemini-3.1-flash-live-preview). Please verify your API key.");
+    }
+
+    console.log(`[Mobile Live] Gemini Live session connected successfully via ${connectedLiveModel}!`);
+    clientWs.send(JSON.stringify({ type: "status", status: "ready", voice: voiceName, model: connectedLiveModel }));
 
     // Asynchronous receiver loop for incoming Gemini Live responses
     (async () => {
