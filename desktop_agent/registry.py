@@ -81,6 +81,7 @@ DESKTOP_TOOL_NAMES = [
     "openWebsite",
     "openChrome",
     "chromeSearch",
+    "openNewTab",
     "searchWeb",
     "searchYouTube",
     "searchGoogle",

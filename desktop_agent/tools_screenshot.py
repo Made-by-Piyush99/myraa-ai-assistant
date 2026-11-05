@@ -14,13 +14,28 @@ crashing; non-OCR capture still works.
 from __future__ import annotations
 
 import base64
+import ctypes
 import io
 import os
+import platform
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .registry import ToolError, register
+
+# Enable Per-Monitor DPI awareness on Windows so screen capture matches mouse pixel coordinates
+if platform.system() == "Windows":
+    try:
+        ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+    except Exception:
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()
+            except Exception:
+                pass
 
 SCREENSHOTS_DIR = Path(os.path.expanduser("~")) / "Pictures" / "MyraaScreenshots"
 

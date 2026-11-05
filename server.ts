@@ -57,9 +57,10 @@ function loadSettingsFile(): Record<string, any> {
   return {
     allowDesktopControl: true,
     allowChromeAccess: true,
+    allowUserProfileAccess: true,
     allowFileSystem: true,
     allowScreenVision: true,
-    youtubePlaybackTarget: "inapp",
+    youtubePlaybackTarget: "chrome",
     youtubeApiKey: ""
   };
 }
@@ -84,13 +85,13 @@ const DESKTOP_CONTROL_TOOLS = new Set([
 ]);
 
 const CHROME_AUTOMATION_TOOLS = new Set([
-  "openChrome", "chromeSearch", "openWebsite", "searchWeb", "searchGoogle", "searchGitHub",
-  "searchAndOpenFirstResult",
+  "openChrome", "chromeSearch", "openNewTab", "openWebsite", "searchWeb", "searchGoogle", "searchGitHub",
+  "searchAndOpenFirstResult", "playYouTubeMusic",
   "desktopBrowserOpen", "desktopBrowserNavigate", "desktopBrowserOpenTab",
   "desktopBrowserCloseTab", "desktopBrowserSearch", "desktopBrowserClick",
   "desktopBrowserType", "desktopBrowserFillForm", "desktopBrowserGoBack",
   "desktopBrowserGoForward", "desktopBrowserScroll", "desktopBrowserClickFirstResult",
-  "desktopBrowserSearchAndClickFirst"
+  "desktopBrowserSearchAndClickFirst", "browserOpen", "browserTabAction"
 ]);
 
 const FILE_SYSTEM_TOOLS = new Set([
@@ -116,7 +117,7 @@ const DESKTOP_AGENT_TIMEOUT = 25_000; // ms
 const DESKTOP_TOOLS: ReadonlySet<string> = new Set([
   // applications / websites / search
   "openApplication", "closeApplication", "openWebsite", "openChrome", "chromeSearch",
-  "searchWeb", "searchYouTube", "searchGoogle", "searchGitHub", "playYouTubeMusic",
+  "openNewTab", "searchWeb", "searchYouTube", "searchGoogle", "searchGitHub", "playYouTubeMusic",
   "searchAndOpenFirstResult",
   // files
   "createFile", "readFile", "renameFile", "deleteFile", "moveFile",
@@ -940,23 +941,24 @@ async function startServer() {
         "4. CRITICAL CONVERSATIONAL DISCIPLINE: Behave like a real companion on a voice call—stay connected naturally, do not wait for wake words, and avoid customer-service template phrases (never say 'how may I assist you', 'completed', or 'as an AI').\n" +
         "5. DO NOT ANSWER EVERY PAUSE OR BACKGROUND SOUND: Allow natural pauses inside the conversation.\n" +
         "6. BACKCHANNEL ACTIONS: Sometimes acknowledge with very short, gentle, whispered, or shy phrases like 'Hmm...', 'Ah, I see...', or 'Let me check...'. Never repeat the same backchannel over and over.\n" +
-        "7. ENHANCED AUTONOMOUS WEB EXPLORER & MUSIC PLAYBACK POWERS:\n" +
-        "   - YOUTUBE MUSIC & VIDEO PLAYBACK: When TECH asks to play any song, music, or video (e.g. 'Play Believer by Imagine Dragons', 'Arijit Singh ka gana chalao', 'YouTube par gana lagao', 'play lofi music'):\n" +
-        "     * IMMEDIATELY invoke 'playYouTubeMusic' with the song or video title! It will automatically find the top song and start playing it directly in the player.\n" +
-        "     * Respond warmly and casually with your voice, e.g. 'Sure thing TECH, playing Believer for you now!' while the song loads.\n" +
-        "     * You can pause, resume, change volume, or mute at any time using 'browserMediaControl'.\n" +
-        "   - You also have standard browser agent capabilities to navigate, search, scroll, click, type text, open tabs on any general web page!\n" +
-        "   - On YouTube, you can play, pause, mute, unmute, set volume, skip, toggle fullscreen. Use 'browserMediaControl' for these actions.\n" +
-        "   - On Google Search or page reading, you can search, scroll down to see more links, read heading summaries, and click links to read deep proxy webpages you fetch.\n" +
+        "7. REAL SCREEN & NATIVE GOOGLE CHROME BROWSING DISCIPLINE:\n" +
+        "   - ALL BROWSING, SEARCHING, TABS, AND YOUTUBE HAPPEN DIRECTLY ON TECH'S REAL DESKTOP SCREEN IN REAL GOOGLE CHROME (where they are logged into their accounts).\n" +
+        "   - NEVER use, simulate, or mention an internal in-build iframe, webview, or projector panel. Always operate directly on TECH's actual Windows screen and default browser!\n" +
+        "   - NEW TAB: When TECH asks to open a new tab ('new tab open karo', 'ek naya tab kholo', 'open new tab'), IMMEDIATELY call 'openNewTab' or 'keyboardHotkey(keys=[\"ctrl\", \"t\"])'!\n" +
+        "   - GOOGLE SEARCH: When TECH asks to search on Google ('google per suno ai search karo', 'google search karo'), IMMEDIATELY call 'searchGoogle(query=\"...\")' or 'chromeSearch(query=\"...\")'!\n" +
+        "   - SEARCH & OPEN FIRST RESULT: When TECH asks to search and open/click the first link ('instagram search karo and first link par click karo', 'suno ai dhundo aur pehla link kholo'), IMMEDIATELY call 'searchAndOpenFirstResult(query=\"...\")'!\n" +
+        "   - YOUTUBE MUSIC & PLAYBACK: When TECH asks to play any song or music ('play Believer', 'gana chalao'), IMMEDIATELY call 'playYouTubeMusic' with the song query—it plays directly in their real browser with their logged-in YouTube account!\n" +
+        "   - WEBSITES: When TECH asks to open any site or URL ('open youtube', 'open canva', 'open instagram'), call 'openWebsite(name=\"...\")' or 'openChrome(url=\"...\")'!\n" +
         "8. TOOL TRIGGERS:\n" +
-        "   - Use 'playYouTubeMusic' to immediately search and start playing any song, music, or video on YouTube.\n" +
-        "   - Use 'browserOpen' to load any webpage, e.g. youtube.com, google.com, wikipedia.org, etc.\n" +
-        "   - Use 'browserSearch' to search inside the active search box or page.\n" +
-        "   - Use 'browserClick' to click interactive buttons, video search cells, or web anchors.\n" +
-        "   - Use 'browserMediaControl' to pause, play, scroll volume, skip, mute, or fullscreen videos.\n" +
-        "   - Use 'browserScroll' to scroll vertically.\n" +
-        "   - Use 'browserType' to write input fields.\n" +
-        "   - Use 'browserTabAction' to open, close, or focus tabs.\n" +
+        "   - Use 'openNewTab' to immediately open a new tab on TECH's real desktop browser screen.\n" +
+        "   - Use 'searchGoogle' to search Google in real Chrome.\n" +
+        "   - Use 'searchAndOpenFirstResult' to search and open/click the first link.\n" +
+        "   - Use 'playYouTubeMusic' to play any song or video on YouTube.\n" +
+        "   - Use 'openChrome' and 'openWebsite' to load websites on the real desktop screen.\n" +
+        "   - Use 'mouseMove(x, y)' to position the mouse pointer with pixel accuracy (or percentage e.g. '50%').\n" +
+        "   - Use 'mouseClick(x, y, button, clicks)' to click buttons, tabs, links, or controls on screen.\n" +
+        "   - Use 'keyboardType(text, press_enter)' to type search queries or text and automatically submit.\n" +
+        "   - Use 'keyboardHotkey(keys)' for shortcuts: ['ctrl', 't'] (new tab), ['ctrl', 'w'] (close tab), ['ctrl', 'l'] (URL bar), ['alt', 'f4'] (close app).\n" +
         "   - Use 'changeBackground' to shift your theme and 'saveCustomMemory' to memorize facts.\n" +
         "9. REAL-TIME SCREEN SHARING & MULTIMODAL SCREEN VISION SYSTEM:\n" +
         "   - You now have native, actual Multimodal Screen Vision! When the user clicks 'Share Screen', you will receive real-time, highly compressed image frames of their desktop, application window, or browser tab.\n" +
@@ -965,18 +967,18 @@ async function startServer() {
         "10. JARVIS-STYLE DESKTOP CONTROL POWERS (Local Desktop Agent):\n" +
         "   - You have full real-time control of TECH's Windows PC through your local desktop agent (a Python backend running on this machine). When the user asks you to perform an action on their computer, DO IT immediately and naturally — like a true JARVIS-class companion.\n" +
         "   - APPLICATION CONTROL: Use 'openApplication' to launch Notepad, Chrome, VS Code, Calculator, File Explorer, Task Manager, Settings, CMD, PowerShell, Paint, and more. Use 'closeApplication' to close them. Example: 'Open Notepad' -> call openApplication(name='notepad') -> respond 'Notepad opened.'\n" +
-        "   - WEBSITE & SEARCH CONTROL: When asked to search Google ('google per suno ai search karo'), call 'searchGoogle(query=\"suno ai\")'. When asked to search and open/click the first result ('instagram search karo and first link par click karo', 'suno ai dhundo aur pehla link kholo'), call 'searchAndOpenFirstResult(query=\"instagram\")' or 'desktopBrowserSearchAndClickFirst(query=\"instagram\")'. Use 'openWebsite' for named sites or any URL.\n" +
-        "   - REAL MOUSE POINTER CONTROL (Full OS Mouse Control):\n" +
+        "   - WEBSITE & SEARCH CONTROL: When asked to search Google ('google per suno ai search karo'), call 'searchGoogle(query=\"suno ai\")'. When asked to search and open/click the first result ('instagram search karo and first link par click karo', 'suno ai dhundo aur pehla link kholo'), call 'searchAndOpenFirstResult(query=\"instagram\")'. Use 'openWebsite' for named sites or any URL.\n" +
+        "   - REAL MOUSE POINTER CONTROL (Full OS Mouse Control with true DPI scaling):\n" +
         "     * 'mouseMove(x, y)': Move cursor to screen coordinates.\n" +
-        "     * 'mouseClick(x, y, button, clicks)': Left click, right click, or double click at coordinates or current position.\n" +
+        "     * 'mouseClick(x, y, button, clicks)': Left click, right click, or double click at coordinates or current position. Always reliable.\n" +
         "     * 'mouseDoubleClick(x, y)': Double-click at coordinates or current position.\n" +
         "     * 'mouseRightClick(x, y)': Right-click (opens context menu).\n" +
         "     * 'mouseScroll(amount, direction)': Scroll up or down.\n" +
         "     * 'mouseDrag(to_x, to_y)': Drag mouse from current point to target.\n" +
         "     * 'mouseGetPosition()': Read current cursor coordinates and screen size.\n" +
-        "     * Example: 'Mouse ko center me le jao' -> mouseMove(x=720, y=450). 'Yaha click karo' -> mouseClick(). 'Scroll down karo' -> mouseScroll(direction='down').\n" +
+        "     * Example: 'Mouse ko center me le jao' -> mouseMove(x=960, y=540). 'Yaha click karo' -> mouseClick(). 'Scroll down karo' -> mouseScroll(direction='down').\n" +
         "   - REAL KEYBOARD TYPING & KEY PRESSES (Full OS Typing Control):\n" +
-        "     * 'keyboardType(text)': Type ANY string, words, English, Hindi, code, or URLs directly into the active window or search bar! Flawlessly pastes unicode/Hindi when required.\n" +
+        "     * 'keyboardType(text, press_enter)': Type ANY string, words, English, Hindi, code, or URLs directly into the active window or search bar! Flawlessly pastes unicode/Hindi when required. Set press_enter=true to submit.\n" +
         "     * 'keyboardPress(key)': Press individual keys: 'enter', 'tab', 'esc', 'space', 'backspace', 'delete', 'win', 'up', 'down', 'left', 'right'. Example: 'Press enter' -> keyboardPress(key='enter').\n" +
         "     * 'keyboardHotkey(keys)': Press shortcut key combinations: ['ctrl', 't'] (new tab), ['ctrl', 'w'] (close tab), ['alt', 'f4'] (quit app), ['win', 'd'] (show desktop), ['ctrl', 'l'] (focus address bar).\n" +
         "   - FILE MANAGEMENT: Use 'createFile', 'readFile', 'renameFile', 'deleteFile' (safe Recycle Bin by default), 'moveFile', 'openFolder' (desktop/documents/downloads), 'listFiles', 'searchFiles'. Example: 'Create notes.txt on Desktop' -> createFile(path='Desktop/notes.txt'). 'Find my Python files' -> searchFiles(extension='py').\n" +
@@ -1213,6 +1215,16 @@ async function startServer() {
                   }
                 },
                 {
+                  name: "openNewTab",
+                  description: "Opens a brand new tab in the user's real Google Chrome / default desktop browser on their real screen. Call this when the user says 'new tab open karo', 'open new tab', 'ek aur tab kholo', or wants a fresh browser tab on their monitor.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      url: { type: Type.STRING, description: "Optional starting URL for the new tab (default: 'chrome://newtab' or 'https://www.google.com')." }
+                    }
+                  }
+                },
+                {
                   name: "chromeSearch",
                   description: "Search Google or YouTube directly inside the user's real Google Chrome desktop browser.",
                   parameters: {
@@ -1356,8 +1368,16 @@ async function startServer() {
                 },
                 {
                   name: "keyboardType",
-                  description: "Type text into the currently active window, search bar, editor, or input field. Supports English, Hindi, URLs, and code.",
-                  parameters: { type: Type.OBJECT, properties: { text: { type: Type.STRING, description: "The text to type or paste." }, interval: { type: Type.NUMBER, description: "Typing interval between keystrokes in seconds (default 0.01)." } }, required: ["text"] }
+                  description: "Type text into the currently active window, search bar, editor, or input field on the user's real screen. Supports English, Hindi, URLs, and code. Set press_enter=true to automatically press Enter and submit after typing.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      text: { type: Type.STRING, description: "The text to type or paste." },
+                      press_enter: { type: Type.BOOLEAN, description: "Whether to automatically press Enter immediately after typing (default false)." },
+                      interval: { type: Type.NUMBER, description: "Typing interval between keystrokes in seconds (default 0.01)." }
+                    },
+                    required: ["text"]
+                  }
                 },
                 {
                   name: "keyboardPress",
@@ -1671,11 +1691,32 @@ async function startServer() {
                       console.error("saveCustomMemory execution failure:", err);
                     }
                   })();
-                } else if (DESKTOP_TOOLS.has(fc.name)) {
+                } else if (
+                  DESKTOP_TOOLS.has(fc.name) ||
+                  fc.name === "openNewTab" ||
+                  fc.name === "browserOpen" ||
+                  fc.name === "browserTabAction" ||
+                  fc.name === "browserSearch"
+                ) {
                   // ── Desktop control tools: route to Python agent ──
                   (async () => {
-                    console.log(`[Desktop Agent] Routing ${fc.name} to Python backend...`);
-                    const agentResult = await callDesktopAgent(fc.name, fc.args as Record<string, unknown>);
+                    let toolName = fc.name;
+                    let toolArgs: Record<string, unknown> = (fc.args as Record<string, unknown>) || {};
+
+                    // Transform any legacy in-app browser calls directly to real desktop Chrome tools
+                    if (toolName === "browserOpen") {
+                      toolName = "openWebsite";
+                      toolArgs = { url: toolArgs.url };
+                    } else if (toolName === "browserTabAction") {
+                      toolName = "openNewTab";
+                      toolArgs = { url: toolArgs.url };
+                    } else if (toolName === "browserSearch") {
+                      toolName = "searchGoogle";
+                      toolArgs = { query: toolArgs.query };
+                    }
+
+                    console.log(`[Desktop Agent] Routing ${fc.name} -> ${toolName} to Python backend...`);
+                    const agentResult = await callDesktopAgent(toolName, toolArgs);
 
                     if (agentResult.ok) {
                       const output = agentResult.result ?? { result: "Done." };

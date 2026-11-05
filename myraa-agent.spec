@@ -3,11 +3,12 @@ from PyInstaller.utils.hooks import collect_submodules
 
 hiddenimports = []
 hiddenimports += collect_submodules('desktop_agent')
-
+hiddenimports += collect_submodules('uvicorn')
+hiddenimports += ["anyio", "fastapi", "starlette", "pydantic", "pyautogui", "pyperclip"]
 
 a = Analysis(
-    ['desktop_agent/main.py'],
-    pathex=[],
+    ['run_agent.py'],
+    pathex=['.'],
     binaries=[],
     datas=[],
     hiddenimports=hiddenimports,

@@ -328,6 +328,13 @@ export function SettingsPanel({ isOpen, onClose, settings, onChange, themeColor 
                     />
 
                     <ToggleRow
+                      label="USER BROWSER PROFILE & SAVED LOGINS"
+                      description="Allow Myraa to open Google Chrome with your saved user profile, cookies, passwords, and accounts (YouTube, Instagram, Google, GitHub)"
+                      checked={settings.allowUserProfileAccess}
+                      onChange={(v) => onChange({ allowUserProfileAccess: v })}
+                    />
+
+                    <ToggleRow
                       label="LOCAL FILE SYSTEM ACCESS"
                       description="Allow creating, reading, listing, and searching project files on your PC"
                       checked={settings.allowFileSystem}

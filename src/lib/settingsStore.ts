@@ -29,6 +29,8 @@ export interface MyraaSettings {
   allowDesktopControl: boolean;
   /** Permission to access and automate real Google Chrome and browser tabs. */
   allowChromeAccess: boolean;
+  /** Permission to access real browser user profile, cookies, and saved account logins. */
+  allowUserProfileAccess: boolean;
   /** Permission to read, write, create, or search local PC files. */
   allowFileSystem: boolean;
   /** Permission to capture and stream real-time screen frames to Gemini vision. */
@@ -51,11 +53,12 @@ export const DEFAULT_SETTINGS: MyraaSettings = {
 
   allowDesktopControl: true,
   allowChromeAccess: true,
+  allowUserProfileAccess: true,
   allowFileSystem: true,
   allowScreenVision: true,
 
   youtubeApiKey: "",
-  youtubePlaybackTarget: "inapp",
+  youtubePlaybackTarget: "chrome",
 };
 
 const STORAGE_KEY = "myraa.settings.v2";

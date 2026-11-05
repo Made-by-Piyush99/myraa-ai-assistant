@@ -419,20 +419,20 @@ export default function App() {
       onToolCall: (name, args, callback) => {
         console.log(`[App] Tool call triggered: ${name}`, args);
         
-        // Target: real Google Chrome if requested
-        if (name === "openChrome") {
+        // Target: real Google Chrome / Default Browser for all tabs, searches, and sites
+        if (name === "openChrome" || name === "openNewTab" || name === "openWebsite" || name === "browserOpen" || name === "browserTabAction") {
           if (!settings.allowChromeAccess) {
             callback({ error: "Permission Denied: Google Chrome & Web Automation is disabled in Settings > Permissions." });
             return;
           }
           const targetUrl = args.url || "https://www.google.com";
           window.open(targetUrl, "_blank", "noopener,noreferrer");
-          callback({ result: `Opened ${targetUrl} in Google Chrome.` });
+          callback({ result: `Opened ${targetUrl} on your desktop in real Google Chrome.` });
           return;
         }
 
-        // Check if YouTube should open in external Chrome
-        if (name === "playYouTubeMusic" && settings.youtubePlaybackTarget === "chrome") {
+        // Direct YouTube Music Playback on Real Screen
+        if (name === "playYouTubeMusic") {
           if (!settings.allowChromeAccess) {
             callback({ error: "Permission Denied: Chrome automation is disabled in Settings > Permissions." });
             return;
@@ -445,16 +445,12 @@ export default function App() {
         }
 
         const browserTools = [
-          "playYouTubeMusic",
-          "browserOpen",
           "browserSearch",
           "browserClick",
           "browserMediaControl",
           "browserScroll",
           "browserType",
-          "browserGoBack",
-          "browserTabAction",
-          "openWebsite"
+          "browserGoBack"
         ];
 
         if (browserTools.includes(name)) {
