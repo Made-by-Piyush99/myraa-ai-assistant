@@ -161,6 +161,12 @@ DESKTOP_TOOL_NAMES = [
     "enableAutoStart",
     "disableAutoStart",
     "getAutoStartStatus",
+    # Autonomous Visual Closed-Loop UI & Training Model (2.0)
+    "visualInteract",
+    "visualMoveAndVerify",
+    "handlePageScrollAndRealign",
+    "getLearnedLandmarks",
+    "clearLearnedLandmarks",
 ]
 
 
@@ -183,6 +189,7 @@ _MODULE_NAMES = [
     "tools_coding",
     "tools_system",
     "tools_startup",
+    "tools_vision_trainer",
 ]
 
 
@@ -204,6 +211,7 @@ def load_all() -> None:
             tools_coding,
             tools_system,
             tools_startup,
+            tools_vision_trainer,
         )
     except ImportError:
         # Fallback for standalone script execution
@@ -221,6 +229,7 @@ def load_all() -> None:
         import desktop_agent.tools_coding
         import desktop_agent.tools_system
         import desktop_agent.tools_startup
+        import desktop_agent.tools_vision_trainer
 
 
 __all__ = ["TOOLS", "STATE", "DESKTOP_TOOL_NAMES", "ToolError", "register", "load_all"]

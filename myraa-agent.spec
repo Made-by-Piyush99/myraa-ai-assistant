@@ -4,7 +4,7 @@ from PyInstaller.utils.hooks import collect_submodules
 hiddenimports = []
 hiddenimports += collect_submodules('desktop_agent')
 hiddenimports += collect_submodules('uvicorn')
-hiddenimports += ["anyio", "fastapi", "starlette", "pydantic", "pyautogui", "pyperclip"]
+hiddenimports += ["anyio", "fastapi", "starlette", "pydantic", "pyautogui", "pyperclip", "uiautomation"]
 
 a = Analysis(
     ['run_agent.py'],

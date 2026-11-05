@@ -1,0 +1,17 @@
+{
+  "landmarks": {
+    "first_name_box": {
+      "target": "first name box",
+      "x": 0,
+      "y": 0,
+      "normalized_x": 0.0,
+      "normalized_y": 0.0,
+      "window_title": "Desktop",
+      "last_action": "hover",
+      "updated_at": "2026-11-05T06:32:34Z",
+      "success_count": 1
+    }
+  },
+  "scroll_offsets": {},
+  "version": "2.0"
+}

@@ -81,7 +81,8 @@ const DESKTOP_CONTROL_TOOLS = new Set([
   "temperatureInfo", "brightnessUp", "brightnessDown", "setBrightness",
   "copySelected", "pasteClipboard", "getClipboard", "clearClipboard",
   "mouseMove", "mouseClick", "mouseDoubleClick", "mouseRightClick", "mouseScroll",
-  "mouseDrag", "mouseGetPosition", "keyboardType", "keyboardPress", "keyboardHotkey"
+  "mouseDrag", "mouseGetPosition", "keyboardType", "keyboardPress", "keyboardHotkey",
+  "visualInteract", "visualMoveAndVerify", "handlePageScrollAndRealign", "getLearnedLandmarks", "clearLearnedLandmarks"
 ]);
 
 const CHROME_AUTOMATION_TOOLS = new Set([
@@ -101,7 +102,8 @@ const FILE_SYSTEM_TOOLS = new Set([
 ]);
 
 const SCREEN_VISION_TOOLS = new Set([
-  "takeScreenshot", "saveScreenshot", "analyzeScreenshot", "readScreen"
+  "takeScreenshot", "saveScreenshot", "analyzeScreenshot", "readScreen",
+  "visualInteract", "visualMoveAndVerify", "handlePageScrollAndRealign", "getLearnedLandmarks", "clearLearnedLandmarks"
 ]);
 
 // ---------------------------------------------------------------------------
@@ -150,6 +152,9 @@ const DESKTOP_TOOLS: ReadonlySet<string> = new Set([
   "brightnessUp", "brightnessDown", "setBrightness",
   // Windows auto-start management (V2)
   "enableAutoStart", "disableAutoStart", "getAutoStartStatus",
+  // Autonomous Visual Closed-Loop UI & Training Model (2.0)
+  "visualInteract", "visualMoveAndVerify", "handlePageScrollAndRealign",
+  "getLearnedLandmarks", "clearLearnedLandmarks",
 ]);
 
 /**
@@ -993,7 +998,16 @@ async function startServer() {
         "11. BRIGHTNESS & AUTO-START (V2):\n" +
         "   - BRIGHTNESS: Use 'brightnessUp', 'brightnessDown', 'setBrightness' when the user asks to change screen brightness. Respond naturally: 'Alright, I've turned up the brightness for you.'\n" +
         "   - AUTO-START: Use 'enableAutoStart' when the user wants MYRAA to start with Windows, 'disableAutoStart' to remove it, 'getAutoStartStatus' to check. Explain what you're doing.\n" +
-        "   - SETTINGS: The user can also configure these in the SETTINGS panel in the UI. If they mention settings, let them know they can adjust them there too.";
+        "   - SETTINGS: The user can also configure these in the SETTINGS panel in the UI. If they mention settings, let them know they can adjust them there too.\n" +
+        "12. VISUAL TRAINING MODEL & CLOSED-LOOP SCREEN TASK EXECUTION (MYRAA 2.0):\n" +
+        "   - When TECH shares their screen and gives ANY visual task (e.g. 'Screen ke upar cursor yaha leke jaao aur click karo', 'first name ke box me PIYUSH likho', 'submit button par click karo', 'search bar me type karo'):\n" +
+        "     * IMMEDIATELY invoke 'visualInteract'!\n" +
+        "     * Pass target description (e.g. target='first name box'), action='type' (or 'click'), text='PIYUSH' (if typing), and estimated coordinates (x, y) from your live multimodal screen vision!\n" +
+        "     * Closed-Loop Verification: Myraa will move the cursor to the target, verify that the cursor has reached the exact position, and if not reached properly or if the page shifted, retry the cursor movement until it is verified on target!\n" +
+        "     * Once verified, it clicks to focus and types the text (e.g. 'PIYUSH').\n" +
+        "     * Myraa remembers this element's position on this page in her persistent landmark training model ('shared/ui_landmarks.json').\n" +
+        "     * If the page scrolls up or down ('agar page upar niche hua'), invoke 'handlePageScrollAndRealign' or 'visualInteract' which automatically re-aligns the vertical coordinates!\n" +
+        "     * Confirm verbally with gentle confidence: 'Done! Maine cursor ko first name box par le jakar verify kiya, focus kiya, aur PIYUSH type kar diya hai.'";
 
       const finalInstructions = formatSystemInstructionsWithMemories(baseInstructions, memories);
 
@@ -1590,6 +1604,60 @@ async function startServer() {
                 {
                   name: "getAutoStartStatus",
                   description: "Check whether MYRAA is currently configured to auto-start on Windows login.",
+                  parameters: { type: Type.OBJECT, properties: {} }
+                },
+                // --- Autonomous Visual Closed-Loop UI & Training Model (MYRAA 2.0) ---
+                {
+                  name: "visualInteract",
+                  description: "Autonomous Closed-Loop Visual UI Interaction. Locates any target UI element, button, or input field on screen (e.g. 'first name box', 'submit button', 'search bar'), moves the mouse cursor to it with closed-loop verification (retrying until cursor is confirmed on target), clicks to focus, and optionally types text (e.g. 'PIYUSH') or executes action. Automatically learns and stores the element's position in persistent landmark memory ('training model'), and auto-adjusts if the page scrolls up or down.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      target: { type: Type.STRING, description: "Name or description of UI element (e.g. 'first name box', 'PIYUSH input', 'submit button')." },
+                      action: { type: Type.STRING, description: "Action type: 'type' (default when text is provided), 'click', 'double_click', or 'hover'." },
+                      text: { type: Type.STRING, description: "Text to type if action is 'type' (e.g. 'PIYUSH')." },
+                      x: { type: Type.NUMBER, description: "Target X pixel coordinate (from live screen vision or estimated)." },
+                      y: { type: Type.NUMBER, description: "Target Y pixel coordinate (from live screen vision or estimated)." },
+                      press_enter: { type: Type.BOOLEAN, description: "Whether to press enter after typing (default false)." },
+                      max_retries: { type: Type.INTEGER, description: "Maximum closed-loop verification correction retries (default 5)." }
+                    },
+                    required: ["target"]
+                  }
+                },
+                {
+                  name: "visualMoveAndVerify",
+                  description: "Moves mouse cursor to target coordinates and enters a closed-loop verification check. Continues adjusting position until the cursor is confirmed precisely on the target.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      x: { type: Type.NUMBER, description: "Target X screen coordinate." },
+                      y: { type: Type.NUMBER, description: "Target Y screen coordinate." },
+                      target: { type: Type.STRING, description: "Target name or label for identification." },
+                      tolerance: { type: Type.INTEGER, description: "Allowed distance error in pixels (default 15)." },
+                      max_retries: { type: Type.INTEGER, description: "Max retry correction attempts (default 5)." }
+                    },
+                    required: ["x", "y"]
+                  }
+                },
+                {
+                  name: "handlePageScrollAndRealign",
+                  description: "Compensates when a webpage or screen has scrolled up or down. Adjusts remembered landmark coordinates by vertical delta so clicking/typing continues targeting the exact boxes even after scrolling.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      direction: { type: Type.STRING, description: "Scroll direction: 'up' or 'down' (default 'down')." },
+                      amount_px: { type: Type.INTEGER, description: "Amount of scroll displacement in pixels (default 100)." }
+                    }
+                  }
+                },
+                {
+                  name: "getLearnedLandmarks",
+                  description: "Returns all stored UI element landmarks in the Training Model memory.",
+                  parameters: { type: Type.OBJECT, properties: {} }
+                },
+                {
+                  name: "clearLearnedLandmarks",
+                  description: "Clears or resets the learned UI landmarks database.",
                   parameters: { type: Type.OBJECT, properties: {} }
                 }
               ]
