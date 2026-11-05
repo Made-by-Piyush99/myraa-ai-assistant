@@ -18,6 +18,11 @@ __pycache__/
 *.7z
 *.zip
 *.blockmap*
+*.apk
+.gradle/
+**/local.properties
+mobile_application/.gradle/
+mobile_application/app/build/
 
 # Sensitive data and local secrets
 .env

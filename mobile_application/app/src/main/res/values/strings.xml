@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">MYRAA</string>
-    <string name="accessibility_service_label">MYRAA AI Super Access & Touch Control</string>
+    <string name="accessibility_service_label">MYRAA AI Super Access &amp; Touch Control</string>
     <string name="accessibility_service_description">Enables MYRAA AI Assistant to perform automated touch gestures, tap on buttons, scroll pages, open applications, and navigate your device on your voice command.</string>
 </resources>
