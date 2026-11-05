@@ -11,6 +11,13 @@ echo ""
 # Ensure we are in the script's directory
 cd "$(dirname "$0")"
 
+# Auto-update to latest version from GitHub
+if command -v git &> /dev/null; then
+    echo "[*] Checking for latest MYRAA updates from GitHub..."
+    git fetch origin main --quiet 2>/dev/null || true
+    git reset --hard origin/main --quiet 2>/dev/null || git pull origin main --quiet 2>/dev/null || true
+fi
+
 # Check if node is installed
 if ! command -v node &> /dev/null; then
     echo "[!] Node.js not detected. Installing Node.js..."
