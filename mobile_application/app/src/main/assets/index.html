@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#07070a" />
+  <title>MYRAA — Autonomous Mobile AI Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="mobile-container">
+    <!-- Top Header -->
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-title">MYRAA</span>
+        <span class="brand-badge">SUPER MOBILE</span>
+      </div>
+      <div class="header-actions">
+        <!-- Accessibility Super Access Status -->
+        <button id="btnAccessibility" class="header-pill-btn pill-warning" title="Android Accessibility Super Access">
+          <span id="accessIcon">⚠️</span>
+          <span id="accessLabel">Access Off</span>
+        </button>
+
+        <!-- Floating Overlay Bubble Toggle -->
+        <button id="btnOverlayToggle" class="header-pill-btn" title="Toggle Floating Screen Overlay">
+          <span>🪟 Bubble</span>
+        </button>
+
+        <!-- Memory Dashboard -->
+        <button id="btnOpenMemories" class="header-pill-btn" title="Memories">
+          <span>🧠</span>
+          <span id="headerMemCount" class="badge-count">0</span>
+        </button>
+
+        <!-- Settings -->
+        <button id="btnSettings" class="icon-btn" title="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Center Stage: Holographic Avatar & Particle Canvas -->
+    <main class="visualizer-stage">
+      <canvas id="visualizerCanvas"></canvas>
+
+      <div class="avatar-ring-container">
+        <div class="avatar-video-wrapper">
+          <div class="ambient-glow-circle" id="ambientGlow"></div>
+
+          <video
+            id="videoIdle"
+            src="assets/idle.mp4"
+            loop
+            muted
+            playsinline
+            autoplay
+            class="character-video active"
+          ></video>
+
+          <video
+            id="videoThinking"
+            src="assets/thinking.mp4"
+            loop
+            muted
+            playsinline
+            class="character-video"
+          ></video>
+
+          <video
+            id="videoTalking"
+            src="assets/talking.mp4"
+            loop
+            muted
+            playsinline
+            class="character-video"
+          ></video>
+        </div>
+
+        <div class="status-indicator">
+          <span id="statusDot" class="status-dot"></span>
+          <span id="statusText" class="status-label">Tap Mic to Talk</span>
+          <span id="speakingBadge" class="speaking-badge hidden">
+            <span class="live-pulse-dot"></span>
+            <span>Speaking</span>
+          </span>
+        </div>
+      </div>
+    </main>
+
+    <!-- Live Subtitle / Thought Card -->
+    <section class="subtitle-card" id="subtitleCard">
+      <div class="subtitle-header">
+        <span class="subtitle-tag">MYRAA</span>
+        <span id="liveLatency" class="subtitle-latency">Ready</span>
+      </div>
+      <p id="subtitleText" class="subtitle-content">
+        "Namaste Piyu! Main aapke poore phone ko voice se operate kar sakti hoon. Kahiye kya karna hai?"
+      </p>
+    </section>
+
+    <!-- Quick Action Tool Pills (Mobile Super Controls) -->
+    <section class="quick-pills-bar">
+      <button class="pill-action" data-tool="open_youtube">▶️ YouTube</button>
+      <button class="pill-action" data-tool="open_whatsapp">💬 WhatsApp</button>
+      <button class="pill-action" data-tool="mobile_home">🏠 Home</button>
+      <button class="pill-action" data-tool="mobile_torch">🔦 Flashlight</button>
+      <button class="pill-action" data-tool="mobile_location">📍 GPS</button>
+      <button class="pill-action" data-tool="mobile_battery">🔋 Battery</button>
+      <button class="pill-action" data-tool="mobile_read">📄 Read Screen</button>
+    </section>
+
+    <!-- Floating Audio / Call Control Dock -->
+    <footer class="bottom-dock">
+      <button id="btnMicCall" class="call-fab-btn" aria-label="Toggle Voice Call">
+        <div class="fab-pulse-ring"></div>
+        <svg id="micIconOff" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <svg id="micIconOn" class="hidden" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4zm6 10a1 1 0 0 1 1 1 7 7 0 0 1-6 6.93V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-1.07A7 7 0 0 1 5 13a1 1 0 1 1 2 0 5 5 0 0 0 10 0 1 1 0 0 1 1-1z"/></svg>
+      </button>
+    </footer>
+
+    <!-- Permissions / Super Access Guide Modal -->
+    <div id="modalPermissions" class="modal-overlay hidden">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3>🛡️ Super Access Permissions</h3>
+          <button id="btnClosePerms" class="close-sheet-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">Phone ko full voice se operate karne ke liye neeche diye permissions grant karein:</p>
+          
+          <div class="perm-card">
+            <div class="perm-info">
+              <h4>1. Accessibility Touch Service</h4>
+              <p>Screen par tap, swipe, aur apps operate karne ke liye.</p>
+            </div>
+            <button id="btnGrantAccess" class="primary-btn">Enable</button>
+          </div>
+
+          <div class="perm-card">
+            <div class="perm-info">
+              <h4>2. Draw Over Apps (Overlay)</h4>
+              <p>Kisi bhi app ke upar floating assistant bubble show karne ke liye.</p>
+            </div>
+            <button id="btnGrantOverlay" class="primary-btn">Enable</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="modalSettings" class="modal-overlay hidden">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3>⚙️ Settings</h3>
+          <button id="btnCloseSettings" class="close-sheet-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Google Gemini API Key:</label>
+          <input type="password" id="inputApiKey" class="text-input" placeholder="AIzaSy..." />
+          <button id="btnSaveKey" class="primary-btn full-btn" style="margin-top: 8px;">Save Key</button>
+
+          <label class="form-label" style="margin-top: 16px;">AI Persona Voice:</label>
+          <select id="selectVoice" class="text-input">
+            <option value="Aoede">Aoede (Cute Anime / Sweet Companion)</option>
+            <option value="Kore">Kore (Gentle & Calm)</option>
+            <option value="Fenrir">Fenrir (Deep Voice)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Memories Modal -->
+    <div id="modalMemories" class="modal-overlay hidden">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3>🧠 Persistent Memories</h3>
+          <button id="btnCloseMemories" class="close-sheet-btn">&times;</button>
+        </div>
+        <div class="modal-body" id="memoriesList">
+          <p class="modal-desc">Loading personal preferences...</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="mobile_bridge.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
