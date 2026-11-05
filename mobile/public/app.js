@@ -255,24 +255,6 @@ class MyraaMobileClient {
       return;
     }
 
-    if (key.startsWith("AQ.")) {
-      this.testResultBox.className = "test-result-box error";
-      this.testResultBox.innerHTML = `
-        <div style="font-weight: 600;">⚠️ Galat Key Type (AQ... Token)</div>
-        <div style="font-size: 0.8rem; margin-top: 4px; line-height: 1.4;">
-          Aapne jo key daali hai woh <strong>AQ.</strong> se shuru ho rahi hai (yeh Google Gemini API key nahi hai).<br><br>
-          Google Gemini API key hamesha <strong>AIzaSy...</strong> se shuru hoti hai (~39 characters).
-        </div>
-        <div style="margin-top: 8px;">
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" style="display: inline-block; background: #3b82f6; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.78rem; font-weight: 600;">
-            👉 Google AI Studio se Free Key lein
-          </a>
-        </div>
-      `;
-      this.testResultBox.classList.remove("hidden");
-      return;
-    }
-
     this.testBtnSpinner.classList.remove("hidden");
     this.btnTestKey.disabled = true;
     this.testResultBox.className = "test-result-box";
