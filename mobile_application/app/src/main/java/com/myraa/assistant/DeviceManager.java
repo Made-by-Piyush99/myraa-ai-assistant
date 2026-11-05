@@ -17,14 +17,57 @@ import android.os.VibrationEffect;
 import android.provider.Settings;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import android.speech.tts.TextToSpeech;
+import java.util.Locale;
 import java.util.List;
 
 public class DeviceManager {
 
     private final Context context;
+    private TextToSpeech tts;
+    private boolean isTtsReady = false;
 
     public DeviceManager(Context context) {
         this.context = context.getApplicationContext();
+        initTTS();
+    }
+
+    private void initTTS() {
+        try {
+            tts = new TextToSpeech(context, status -> {
+                if (status == TextToSpeech.SUCCESS) {
+                    int res = tts.setLanguage(new Locale("hi", "IN"));
+                    if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        tts.setLanguage(Locale.US);
+                    }
+                    tts.setPitch(1.05f);
+                    tts.setSpeechRate(1.02f);
+                    isTtsReady = true;
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void speak(String text) {
+        if (text == null || text.trim().isEmpty()) return;
+        if (tts == null) initTTS();
+        try {
+            if (tts != null) {
+                tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "myraa_speech_" + System.currentTimeMillis());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void stopSpeaking() {
+        try {
+            if (tts != null) {
+                tts.stop();
+            }
+        } catch (Exception ignored) {}
     }
 
     /**

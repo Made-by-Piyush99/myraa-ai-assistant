@@ -181,6 +181,39 @@ window.MobileBridge = {
     }
   },
 
+  speak: function(text) {
+    if (this.isAndroid() && typeof window.MyraaNative.speak === 'function') {
+      try {
+        window.MyraaNative.speak(text);
+        return;
+      } catch (e) {
+        console.warn('Native TTS error:', e);
+      }
+    }
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = 'hi-IN';
+        u.rate = 1.0;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+  },
+
+  stopSpeaking: function() {
+    if (this.isAndroid() && typeof window.MyraaNative.stopSpeaking === 'function') {
+      try {
+        window.MyraaNative.stopSpeaking();
+      } catch (e) {}
+    }
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {}
+    }
+  },
+
   executeMobileTool: function(toolName, args) {
     if (this.isAndroid()) {
       try {

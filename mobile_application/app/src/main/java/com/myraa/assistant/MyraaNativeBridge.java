@@ -145,6 +145,16 @@ public class MyraaNativeBridge {
     }
 
     @JavascriptInterface
+    public void speak(String text) {
+        deviceManager.speak(text);
+    }
+
+    @JavascriptInterface
+    public void stopSpeaking() {
+        deviceManager.stopSpeaking();
+    }
+
+    @JavascriptInterface
     public void startFloatingBubble() {
         if (isOverlayActive()) {
             Intent intent = new Intent(context, MyraaOverlayService.class);

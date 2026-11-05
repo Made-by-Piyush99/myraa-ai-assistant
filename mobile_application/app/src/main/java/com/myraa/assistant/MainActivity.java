@@ -46,8 +46,10 @@ public class MainActivity extends AppCompatActivity {
         // Hardware acceleration
         webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
 
-        // Native Super Access JavaScript Bridge
-        webView.addJavascriptInterface(new MyraaNativeBridge(this), "MyraaNative");
+        // Native Super Access JavaScript Bridge (accessible via both MobileBridge and MyraaNative)
+        MyraaNativeBridge nativeBridge = new MyraaNativeBridge(this);
+        webView.addJavascriptInterface(nativeBridge, "MyraaNative");
+        webView.addJavascriptInterface(nativeBridge, "MobileBridge");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
