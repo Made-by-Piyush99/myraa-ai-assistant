@@ -30,6 +30,10 @@ class MyraaMobileClient {
     this.memories = [];
     this.activeCategoryFilter = "all";
     this.selectedVoice = "Aoede";
+    this.audioOutputMode = "speaker"; // 'speaker' | 'earpiece'
+    this.phoneFilterNode = null;
+    this.outputGainNode = null;
+    this.micAudioContext = null;
 
     this.initDOMElements();
     this.initCanvasVisualizer();
@@ -44,12 +48,21 @@ class MyraaMobileClient {
     this.iconHangup = document.getElementById("iconHangup");
     this.statusDot = document.getElementById("statusDot");
     this.statusText = document.getElementById("statusText");
+    this.speakingBadge = document.getElementById("speakingBadge");
     this.orbGlow = document.getElementById("orbGlow");
     this.captionCard = document.getElementById("captionCard");
     this.captionText = document.getElementById("captionText");
     this.callHint = document.getElementById("callHint");
     this.waveBars = document.querySelectorAll(".wave-bar");
     this.waveContainer = document.getElementById("waveBars");
+
+    // Speaker / Earpiece Toggles
+    this.btnSpeakerToggle = document.getElementById("btnSpeakerToggle");
+    this.speakerIcon = document.getElementById("speakerIcon");
+    this.speakerLabel = document.getElementById("speakerLabel");
+    this.btnCallSpeakerToggle = document.getElementById("btnCallSpeakerToggle");
+    this.callSpeakerIcon = document.getElementById("callSpeakerIcon");
+    this.callSpeakerText = document.getElementById("callSpeakerText");
 
     // Header Badges
     this.btnOpenMemories = document.getElementById("btnOpenMemories");
@@ -94,6 +107,14 @@ class MyraaMobileClient {
   bindEvents() {
     // Call Button
     this.btnToggleCall.addEventListener("click", () => this.toggleCall());
+
+    // Speaker / Earpiece Toggles
+    if (this.btnSpeakerToggle) {
+      this.btnSpeakerToggle.addEventListener("click", () => this.toggleSpeakerMode());
+    }
+    if (this.btnCallSpeakerToggle) {
+      this.btnCallSpeakerToggle.addEventListener("click", () => this.toggleSpeakerMode());
+    }
 
     // Settings Modal
     this.btnSettings.addEventListener("click", () => this.openSettings());
@@ -478,6 +499,21 @@ class MyraaMobileClient {
       this.analyser.fftSize = 64;
       this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
 
+      // Acoustic filter & gain chain for Speaker vs Earpiece phone call mode
+      this.phoneFilterNode = this.audioContext.createBiquadFilter();
+      this.phoneFilterNode.type = "allpass";
+
+      this.outputGainNode = this.audioContext.createGain();
+      this.outputGainNode.gain.value = 1.0;
+
+      // Connect: source -> phoneFilter -> outputGain -> analyser -> destination
+      this.phoneFilterNode.connect(this.outputGainNode);
+      this.outputGainNode.connect(this.analyser);
+      this.analyser.connect(this.audioContext.destination);
+
+      // Apply initial audio output mode
+      await this.applySpeakerMode(this.audioOutputMode || "speaker");
+
       // 2. Request Screen Wake Lock (prevents mobile display from turning off during call)
       if ("wakeLock" in navigator) {
         try {
@@ -524,7 +560,7 @@ class MyraaMobileClient {
   }
 
   async startMicrophone() {
-    // 16kHz layout sampling with AEC for mobile
+    // 16kHz layout sampling with AEC for mobile phone calls
     this.micStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         channelCount: 1,
@@ -535,6 +571,9 @@ class MyraaMobileClient {
     });
 
     const micCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    if (micCtx.state === "suspended") {
+      await micCtx.resume();
+    }
     const source = micCtx.createMediaStreamSource(this.micStream);
     const processor = micCtx.createScriptProcessor(2048, 1, 1);
 
@@ -556,8 +595,72 @@ class MyraaMobileClient {
     };
 
     source.connect(processor);
-    processor.connect(micCtx.destination);
+    // Connect to a silent gain node to prevent local feedback/echo
+    const silentNode = micCtx.createGain();
+    silentNode.gain.value = 0;
+    processor.connect(silentNode);
+    silentNode.connect(micCtx.destination);
+
     this.micProcessor = processor;
+    this.micAudioContext = micCtx;
+  }
+
+  // --- Speaker vs Earpiece Phone Call Toggle ---
+  async toggleSpeakerMode() {
+    const nextMode = this.audioOutputMode === "speaker" ? "earpiece" : "speaker";
+    await this.applySpeakerMode(nextMode);
+  }
+
+  async applySpeakerMode(mode) {
+    this.audioOutputMode = mode;
+    const isEarpiece = mode === "earpiece";
+
+    if (this.phoneFilterNode && this.outputGainNode && this.audioContext) {
+      if (isEarpiece) {
+        // Telephonic earpiece acoustic tuning (bandpass 1800Hz, subtle gain calibration)
+        this.phoneFilterNode.type = "bandpass";
+        this.phoneFilterNode.frequency.setValueAtTime(1800, this.audioContext.currentTime);
+        this.phoneFilterNode.Q.setValueAtTime(0.85, this.audioContext.currentTime);
+        this.outputGainNode.gain.setValueAtTime(0.78, this.audioContext.currentTime);
+      } else {
+        // High-fidelity wide stereo loudspeaker
+        this.phoneFilterNode.type = "allpass";
+        this.outputGainNode.gain.setValueAtTime(1.0, this.audioContext.currentTime);
+      }
+    }
+
+    // Update UI elements
+    const icon = isEarpiece ? "📞" : "🔊";
+    const label = isEarpiece ? "Earpiece" : "Speaker";
+    const subLabel = isEarpiece ? "Call (Earpiece)" : "Loudspeaker";
+
+    if (this.speakerIcon) this.speakerIcon.textContent = icon;
+    if (this.speakerLabel) this.speakerLabel.textContent = label;
+    if (this.callSpeakerIcon) this.callSpeakerIcon.textContent = icon;
+    if (this.callSpeakerText) this.callSpeakerText.textContent = subLabel;
+
+    if (this.btnCallSpeakerToggle) {
+      this.btnCallSpeakerToggle.classList.toggle("earpiece-active", isEarpiece);
+    }
+
+    // Hardware setSinkId routing if supported on device
+    if (this.audioContext && typeof this.audioContext.setSinkId === "function") {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const outputs = devices.filter((d) => d.kind === "audiooutput");
+        const target = outputs.find((d) => {
+          const l = (d.label || "").toLowerCase();
+          return isEarpiece
+            ? l.includes("earpiece") || l.includes("receiver") || l.includes("phone")
+            : l.includes("speaker") || l.includes("loudspeaker");
+        });
+        if (target) {
+          await this.audioContext.setSinkId(target.deviceId);
+        }
+      } catch {
+        /* hardware setSinkId optional */
+      }
+    }
   }
 
   disconnect(reason = "Tap to Connect") {
@@ -576,6 +679,13 @@ class MyraaMobileClient {
     if (this.micStream) {
       this.micStream.getTracks().forEach((t) => t.stop());
       this.micStream = null;
+    }
+
+    if (this.micAudioContext) {
+      try {
+        this.micAudioContext.close();
+      } catch {}
+      this.micAudioContext = null;
     }
 
     if (this.wakeLock) {
@@ -600,22 +710,22 @@ class MyraaMobileClient {
       if (msg.type === "status") {
         if (msg.status === "ready") {
           this.setState("listening");
-          this.statusText.textContent = "Listening to you...";
         } else if (msg.status === "connecting_gemini") {
           this.statusText.textContent = "Waking up Myraa...";
         }
       } else if (msg.type === "audio") {
-        this.playAudioChunk(msg.data);
+        this.playAudioChunk(msg.data || msg.audio);
       } else if (msg.type === "transcript") {
         this.showCaption(msg.text);
       } else if (msg.type === "interrupted") {
         this.stopAllAudio();
         this.setState("listening");
-        this.statusText.textContent = "Listening...";
       } else if (msg.type === "youtube_play") {
-        this.playYouTubeTrack(msg.title, msg.embedUrl);
-      } else if (msg.type === "memory_saved") {
-        this.showCaption(`Saved to memory: "${msg.memory?.text || ''}"`);
+        this.playYouTubeTrack(msg.query || msg.title, msg.embedUrl);
+      } else if (msg.type === "memory_saved" || msg.type === "memory_sync") {
+        if (msg.memory) {
+          this.showCaption(`Saved to memory: "${msg.memory.text}"`);
+        }
         this.fetchMemories();
       } else if (msg.type === "error") {
         alert(msg.error);
@@ -628,9 +738,8 @@ class MyraaMobileClient {
 
   // --- Audio Playback Engine (24kHz Gapless) ---
   playAudioChunk(base64Data) {
-    if (!this.audioContext) return;
+    if (!this.audioContext || !base64Data) return;
     this.setState("speaking");
-    this.statusText.textContent = "Myraa is speaking...";
 
     const uint8 = this.base64ToUint8Array(base64Data);
     const float32 = this.pcm16ToFloats(uint8);
@@ -641,9 +750,13 @@ class MyraaMobileClient {
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
 
-    // Connect to analyser & speakers
-    source.connect(this.analyser);
-    this.analyser.connect(this.audioContext.destination);
+    // Connect source through phoneFilterNode -> outputGainNode -> analyser -> speakers
+    if (this.phoneFilterNode) {
+      source.connect(this.phoneFilterNode);
+    } else if (this.analyser) {
+      source.connect(this.analyser);
+      this.analyser.connect(this.audioContext.destination);
+    }
 
     const now = this.audioContext.currentTime;
     const startTime = Math.max(now, this.nextPlayTime);
@@ -657,7 +770,6 @@ class MyraaMobileClient {
       if (idx !== -1) this.activeAudioSources.splice(idx, 1);
       if (this.activeAudioSources.length === 0 && this.isConnected) {
         this.setState("listening");
-        this.statusText.textContent = "Listening...";
       }
     };
   }
@@ -678,6 +790,22 @@ class MyraaMobileClient {
     this.state = newState;
     this.statusDot.className = "status-dot " + (newState === "idle" ? "" : newState);
     this.orbGlow.className = "orb-glow " + (newState === "idle" ? "" : newState);
+
+    if (newState === "speaking") {
+      this.statusDot.classList.add("speaking");
+      this.speakingBadge?.classList.remove("hidden");
+      this.statusText.textContent = "Myraa is speaking...";
+    } else {
+      this.statusDot.classList.remove("speaking");
+      this.speakingBadge?.classList.add("hidden");
+      if (newState === "listening") {
+        this.statusText.textContent = "Listening to you...";
+      } else if (newState === "connecting") {
+        this.statusText.textContent = "Connecting to Myraa...";
+      } else if (newState === "idle") {
+        this.statusText.textContent = "Tap to Connect";
+      }
+    }
   }
 
   showCaption(text) {

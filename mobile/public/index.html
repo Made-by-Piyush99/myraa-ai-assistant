@@ -21,6 +21,12 @@
         <span class="brand-badge">VOICE</span>
       </div>
       <div class="header-actions">
+        <!-- Audio Output Mode Toggle: Loudspeaker vs Call Earpiece -->
+        <button id="btnSpeakerToggle" class="header-pill-btn speaker-pill" aria-label="Audio Output Mode">
+          <span id="speakerIcon">🔊</span>
+          <span id="speakerLabel">Speaker</span>
+        </button>
+
         <!-- Memory Dashboard Trigger -->
         <button id="btnOpenMemories" class="header-pill-btn" aria-label="Memories">
           <span>🧠 Memories</span>
@@ -42,6 +48,10 @@
         <div class="status-indicator">
           <span id="statusDot" class="status-dot"></span>
           <span id="statusText" class="status-label">Tap to Connect</span>
+          <span id="speakingBadge" class="speaking-badge hidden">
+            <span class="live-pulse-dot"></span>
+            <span>Speaking</span>
+          </span>
         </div>
       </div>
     </main>
@@ -72,6 +82,14 @@
 
     <!-- Bottom Controls -->
     <footer class="bottom-controls">
+      <!-- Output Mode Switcher: Loudspeaker vs Earpiece Phone Call -->
+      <div class="call-mode-row">
+        <button id="btnCallSpeakerToggle" class="mode-pill-btn" aria-label="Audio Output Mode">
+          <span id="callSpeakerIcon">🔊</span>
+          <span id="callSpeakerText">Loudspeaker</span>
+        </button>
+      </div>
+
       <!-- Waveform Bars -->
       <div id="waveBars" class="waveform-container">
         <div class="wave-bar"></div>

@@ -341,33 +341,16 @@ wss.on("connection", async (clientWs) => {
 
     let session = null;
     let connectedLiveModel = "";
-    const candidateLiveModels = ["gemini-3.8-live", "gemini-3.1-flash-live-preview"];
+    const candidateLiveModels = ["gemini-3.1-flash-live-preview", "gemini-3.8-live"];
 
-    for (const lm of candidateLiveModels) {
-      try {
-        session = await ai.live.connect({
-          model: lm,
-          config: liveConfig
-        });
-        connectedLiveModel = lm;
-        break;
-      } catch (liveErr) {
-        console.warn(`[Mobile Live] Connecting with ${lm} failed: ${liveErr.message || liveErr}. Trying next...`);
-      }
-    }
-
-    if (!session) {
-      throw new Error("Could not connect to Gemini Live models (gemini-3.8-live / gemini-3.1-flash-live-preview). Please verify your API key.");
-    }
-
-    console.log(`[Mobile Live] Gemini Live session connected successfully via ${connectedLiveModel}!`);
-    clientWs.send(JSON.stringify({ type: "status", status: "ready", voice: voiceName, model: connectedLiveModel }));
-
-    // Asynchronous receiver loop for incoming Gemini Live responses
-    (async () => {
-      try {
-        for await (const message of session.receive()) {
-          // 1. Audio and text parts
+    // Direct callback handlers for the official @google/genai JS Live session
+    const liveCallbacks = {
+      onopen: () => {
+        console.log(`[Mobile Live] Gemini Live connection open via ${connectedLiveModel}!`);
+      },
+      onmessage: async (message) => {
+        try {
+          // 1. Audio and text parts from Myraa
           const parts = message.serverContent?.modelTurn?.parts || [];
           for (const part of parts) {
             if (part.inlineData && part.inlineData.mimeType?.startsWith("audio/")) {
@@ -389,19 +372,30 @@ wss.on("connection", async (clientWs) => {
             }
           }
 
-          // 2. Interruption
+          // 2. User speech transcription (if available)
+          const userText = message.serverContent?.userTurn?.parts?.[0]?.text;
+          if (userText) {
+            clientWs.send(
+              JSON.stringify({
+                type: "user_transcript",
+                text: userText
+              })
+            );
+          }
+
+          // 3. User interruption
           if (message.serverContent?.interrupted) {
             console.log("[Mobile Live] User interrupted Myraa.");
             clientWs.send(JSON.stringify({ type: "interrupted" }));
           }
 
-          // 3. Turn complete
+          // 4. Turn complete
           if (message.serverContent?.turnComplete) {
             clientWs.send(JSON.stringify({ type: "turnComplete" }));
           }
 
-          // 4. Function & Tool Calls
-          if (message.toolCall?.functionCalls) {
+          // 5. Function & Tool Calls
+          if (message.toolCall?.functionCalls && session) {
             for (const fc of message.toolCall.functionCalls) {
               console.log("[Mobile Tool Call]:", fc.name, fc.args);
 
@@ -474,33 +468,57 @@ wss.on("connection", async (clientWs) => {
               }
             }
           }
+        } catch (msgErr) {
+          console.error("[Mobile Live Message Handler Error]:", msgErr.message || msgErr);
         }
-      } catch (err) {
-        console.error("[Mobile Live Stream Loop Error]:", err.message || err);
-        clientWs.send(JSON.stringify({ type: "error", error: err.message || String(err) }));
+      },
+      onerror: (liveErr) => {
+        console.error("[Mobile Live Session Error]:", liveErr?.message || liveErr);
+        clientWs.send(JSON.stringify({ type: "error", error: liveErr?.message || String(liveErr) }));
+      },
+      onclose: () => {
+        console.log("[Mobile Live] Gemini connection closed.");
+        clientWs.send(JSON.stringify({ type: "status", status: "session_closed" }));
       }
-    })();
+    };
 
-    // Handle messages from Mobile Web Client
+    for (const lm of candidateLiveModels) {
+      try {
+        session = await ai.live.connect({
+          model: lm,
+          config: liveConfig,
+          callbacks: liveCallbacks
+        });
+        connectedLiveModel = lm;
+        break;
+      } catch (liveErr) {
+        console.warn(`[Mobile Live] Connecting with ${lm} failed: ${liveErr.message || liveErr}. Trying next...`);
+      }
+    }
+
+    if (!session) {
+      throw new Error("Could not connect to Gemini Live models. Please check your API key and connection.");
+    }
+
+    console.log(`[Mobile Live] Gemini Live session connected successfully via ${connectedLiveModel}!`);
+    clientWs.send(JSON.stringify({ type: "status", status: "ready", voice: voiceName, model: connectedLiveModel }));
+
+    // Handle incoming messages from Mobile Client
     clientWs.on("message", (raw) => {
       try {
         const msg = JSON.parse(raw.toString());
 
         // Audio chunk from phone microphone (PCM 16kHz)
-        if (msg.type === "audio_chunk" && msg.data) {
+        if ((msg.type === "audio_chunk" || msg.type === "audio") && msg.data) {
           session.sendRealtimeInput({
-            mediaChunks: [
-              {
-                mimeType: "audio/pcm;rate=16000",
-                data: msg.data
-              }
-            ]
+            audio: {
+              data: msg.data,
+              mimeType: "audio/pcm;rate=16000"
+            }
           });
-        } else if (msg.realtimeInput?.mediaChunks) {
-          session.sendRealtimeInput(msg.realtimeInput);
         } else if (msg.type === "text" && msg.text) {
           session.sendRealtimeInput({
-            content: [{ text: msg.text }]
+            text: msg.text
           });
         }
       } catch (err) {
