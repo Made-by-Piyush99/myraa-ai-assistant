@@ -78,6 +78,7 @@ DESKTOP_TOOL_NAMES = [
     "playYouTubeMusic",
     "openApplication",
     "closeApplication",
+    "executeFile",
     "openWebsite",
     "openChrome",
     "chromeSearch",
@@ -87,8 +88,10 @@ DESKTOP_TOOL_NAMES = [
     "searchGoogle",
     "searchGitHub",
     "searchAndOpenFirstResult",
-    # files
+    # files & drives
     "createFile",
+    "createFolder",
+    "listDrives",
     "readFile",
     "renameFile",
     "deleteFile",
@@ -96,11 +99,12 @@ DESKTOP_TOOL_NAMES = [
     "openFolder",
     "listFiles",
     "searchFiles",
-    # pc control (volume + gated power)
+    # pc control (volume + refresh + gated power)
     "volumeUp",
     "volumeDown",
     "muteToggle",
     "setVolume",
+    "desktopRefresh",
     "requestPowerAction",  # first step: issues a confirmation token
     "executePowerAction",  # second step: runs the gated action
     # mouse & pointer control (V2)
@@ -167,6 +171,8 @@ DESKTOP_TOOL_NAMES = [
     "handlePageScrollAndRealign",
     "getLearnedLandmarks",
     "clearLearnedLandmarks",
+    # Automated Software Setup & Installation Wizard Assistant
+    "automateInstaller",
 ]
 
 
@@ -190,6 +196,7 @@ _MODULE_NAMES = [
     "tools_system",
     "tools_startup",
     "tools_vision_trainer",
+    "tools_installer",
 ]
 
 
@@ -212,6 +219,7 @@ def load_all() -> None:
             tools_system,
             tools_startup,
             tools_vision_trainer,
+            tools_installer,
         )
     except ImportError:
         # Fallback for standalone script execution
@@ -230,6 +238,7 @@ def load_all() -> None:
         import desktop_agent.tools_system
         import desktop_agent.tools_startup
         import desktop_agent.tools_vision_trainer
+        import desktop_agent.tools_installer
 
 
 __all__ = ["TOOLS", "STATE", "DESKTOP_TOOL_NAMES", "ToolError", "register", "load_all"]

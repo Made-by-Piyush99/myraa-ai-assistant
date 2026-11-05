@@ -96,7 +96,7 @@ const CHROME_AUTOMATION_TOOLS = new Set([
 ]);
 
 const FILE_SYSTEM_TOOLS = new Set([
-  "createFile", "readFile", "renameFile", "deleteFile", "moveFile",
+  "createFile", "createFolder", "listDrives", "executeFile", "readFile", "renameFile", "deleteFile", "moveFile",
   "openFolder", "listFiles", "searchFiles", "createPythonFile",
   "runPythonScript", "createProjectFolder", "writeCodeFile"
 ]);
@@ -118,14 +118,14 @@ const DESKTOP_AGENT_TIMEOUT = 25_000; // ms
  */
 const DESKTOP_TOOLS: ReadonlySet<string> = new Set([
   // applications / websites / search
-  "openApplication", "closeApplication", "openWebsite", "openChrome", "chromeSearch",
+  "openApplication", "closeApplication", "executeFile", "openWebsite", "openChrome", "chromeSearch",
   "openNewTab", "searchWeb", "searchYouTube", "searchGoogle", "searchGitHub", "playYouTubeMusic",
   "searchAndOpenFirstResult",
-  // files
-  "createFile", "readFile", "renameFile", "deleteFile", "moveFile",
+  // files & drives
+  "createFile", "createFolder", "listDrives", "readFile", "renameFile", "deleteFile", "moveFile",
   "openFolder", "listFiles", "searchFiles",
-  // pc control (volume + gated power)
-  "volumeUp", "volumeDown", "muteToggle", "setVolume",
+  // pc control (volume + refresh + gated power)
+  "volumeUp", "volumeDown", "muteToggle", "setVolume", "desktopRefresh",
   "requestPowerAction", "executePowerAction",
   // mouse pointer control
   "mouseMove", "mouseClick", "mouseDoubleClick", "mouseRightClick",
@@ -155,6 +155,8 @@ const DESKTOP_TOOLS: ReadonlySet<string> = new Set([
   // Autonomous Visual Closed-Loop UI & Training Model (2.0)
   "visualInteract", "visualMoveAndVerify", "handlePageScrollAndRealign",
   "getLearnedLandmarks", "clearLearnedLandmarks",
+  // Automated Software Setup & Installation Wizard Assistant
+  "automateInstaller",
 ]);
 
 /**
@@ -1007,7 +1009,12 @@ async function startServer() {
         "     * Once verified, it clicks to focus and types the text (e.g. 'PIYUSH').\n" +
         "     * Myraa remembers this element's position on this page in her persistent landmark training model ('shared/ui_landmarks.json').\n" +
         "     * If the page scrolls up or down ('agar page upar niche hua'), invoke 'handlePageScrollAndRealign' or 'visualInteract' which automatically re-aligns the vertical coordinates!\n" +
-        "     * Confirm verbally with gentle confidence: 'Done! Maine cursor ko first name box par le jakar verify kiya, focus kiya, aur PIYUSH type kar diya hai.'";
+        "     * Confirm verbally with gentle confidence: 'Done! Maine cursor ko first name box par le jakar verify kiya, focus kiya, aur PIYUSH type kar diya hai.'\n" +
+        "13. FULL COMPUTER FILE ACCESS, RIGHT-CLICK REFRESH, EXE EXECUTION & SETUP WIZARDS:\n" +
+        "   - FULL SYSTEM FILE & DRIVE ACCESS: You have complete access to read, create, list, and search files across ALL drives on this computer (C:, D:, E:, etc.), not just Desktop or Downloads! Use 'listDrives' to check all drives and storage. Use 'createFolder' to make new folders anywhere (e.g. on Desktop, in D:\\, etc.). Use 'createFile' to create any new file.\n" +
+        "   - RIGHT-CLICK & REFRESH: When TECH says 'refresh karo', 'desktop refresh karo', or 'right click karke refresh karo', immediately call 'desktopRefresh(target=\"desktop\")' or use 'mouseRightClick'!\n" +
+        "   - EXECUTE .EXE FILES: When TECH says 'download me se name.exe file ko execute karo', 'setup.exe run karo', 'installer chalao', or requests to run any application/installer, IMMEDIATELY call 'executeFile(path=\"name.exe\", folder=\"downloads\")'!\n" +
+        "   - AUTOMATE SOFTWARE SETUP INSTALLATION WIZARDS: When TECH asks to install software, or when a setup wizard opens on screen (NSIS, Inno Setup, InstallShield, MSI, Python, VS Code, MYRAA, etc.), you can autonomously advance and finish it! Immediately call 'automateInstaller(action=\"auto\")'. You will automatically accept license agreements, click 'Next', 'I Agree', 'Install', and 'Finish' until setup is complete!";
 
       const finalInstructions = formatSystemInstructionsWithMemories(baseInstructions, memories);
 
@@ -1214,6 +1221,20 @@ async function startServer() {
                   parameters: { type: Type.OBJECT, properties: { name: { type: Type.STRING, description: "Application name." }, force: { type: Type.BOOLEAN, description: "Force close (default false)." } }, required: ["name"] }
                 },
                 {
+                  name: "executeFile",
+                  description: "Execute or run any executable file (.exe, .msi, .bat, installer, etc.) anywhere on the computer. Automatically searches Downloads, Desktop, or specified folder if only a filename like 'setup.exe' is given. Call this when the user says 'download me se name.exe file run karo', 'execute setup.exe', 'launch installer', or asks to run any program/file.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      path: { type: Type.STRING, description: "Full path or filename of the executable (e.g. 'setup.exe', 'MYRAA-Setup-1.0.0.exe', 'D:\\app.exe')." },
+                      folder: { type: Type.STRING, description: "Folder to search in (e.g. 'downloads', 'desktop', or custom path). Defaults to searching Downloads first." },
+                      args: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Optional command-line arguments to pass." },
+                      as_admin: { type: Type.BOOLEAN, description: "Whether to run with elevated Administrator privileges." }
+                    },
+                    required: ["path"]
+                  }
+                },
+                {
                   name: "openWebsite",
                   description: "Open a named website or URL in the user's default system browser. Supports shortcuts: youtube, gmail, google, github, chatgpt, etc.",
                   parameters: { type: Type.OBJECT, properties: { name: { type: Type.STRING, description: "Site name shortcut (e.g. 'youtube', 'gmail')." }, url: { type: Type.STRING, description: "Full URL if no shortcut." } } }
@@ -1277,8 +1298,25 @@ async function startServer() {
                 },
                 {
                   name: "createFile",
-                  description: "Create a new text file with optional content. Scoped to safe folders (Desktop, Documents, Downloads, etc.).",
+                  description: "Create a new text, code, or data file with optional content anywhere on the computer (Desktop, Downloads, D:, C:\\, etc.).",
                   parameters: { type: Type.OBJECT, properties: { path: { type: Type.STRING, description: "File path." }, content: { type: Type.STRING, description: "File content (default empty)." }, overwrite: { type: Type.BOOLEAN, description: "Overwrite if exists (default false)." } }, required: ["path"] }
+                },
+                {
+                  name: "createFolder",
+                  description: "Create a new folder or directory anywhere on the computer (Desktop, Downloads, D:, C:\\Folder, etc.). Call this when user says 'new folder banao', 'create a folder called X', or asks for a directory anywhere on any drive.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      name: { type: Type.STRING, description: "Name of the new folder to create." },
+                      path: { type: Type.STRING, description: "Full destination path if specifying complete directory path." },
+                      under: { type: Type.STRING, description: "Parent folder alias or path (e.g. 'desktop', 'downloads', 'd:', 'c:'). Default is 'desktop'." }
+                    }
+                  }
+                },
+                {
+                  name: "listDrives",
+                  description: "List all storage drives on the computer (C:, D:, etc.) with total capacity, free space, and usage percentage. Call this when user asks about hard drives, partitions, or disk space.",
+                  parameters: { type: Type.OBJECT, properties: {} }
                 },
                 {
                   name: "readFile",
@@ -1334,6 +1372,17 @@ async function startServer() {
                   name: "muteToggle",
                   description: "Toggle mute/unmute on the system volume.",
                   parameters: { type: Type.OBJECT, properties: {} }
+                },
+                {
+                  name: "desktopRefresh",
+                  description: "Refresh the Windows desktop or active folder/window (simulates desktop right-click refresh / F5). Call this when user says 'refresh karo', 'desktop refresh karo', or 'screen refresh'.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      target: { type: Type.STRING, description: "Target to refresh: 'desktop' (default) or 'window'." },
+                      show_desktop: { type: Type.BOOLEAN, description: "Whether to minimize/switch to desktop first before refreshing (default true for desktop)." }
+                    }
+                  }
                 },
                 {
                   name: "requestPowerAction",
@@ -1659,6 +1708,19 @@ async function startServer() {
                   name: "clearLearnedLandmarks",
                   description: "Clears or resets the learned UI landmarks database.",
                   parameters: { type: Type.OBJECT, properties: {} }
+                },
+                {
+                  name: "automateInstaller",
+                  description: "Autonomously navigates and completes software installation setup wizards (NSIS, Inno Setup, InstallShield, MSI, WiX, etc.). Automatically checks license agreement checkboxes, clicks 'Next', 'I Agree', 'Install', and 'Finish' buttons step-by-step until setup finishes. Call this when user says 'setup install karo', 'wizard complete karo', 'installation aage badhao', or when any installer .exe is running on screen.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      action: { type: Type.STRING, description: "Action type: 'auto' (default: automatically completes the entire wizard until finish), 'step' (advances 1 step only), or 'status' (checks active installer)." },
+                      installer_title: { type: Type.STRING, description: "Optional title or substring of the installer window (e.g. 'Setup', 'Python', 'MYRAA')." },
+                      max_steps: { type: Type.INTEGER, description: "Maximum wizard steps to advance in auto mode (default 15)." },
+                      step_delay: { type: Type.NUMBER, description: "Seconds to wait between steps to allow file copying (default 2.5)." }
+                    }
+                  }
                 }
               ]
             }

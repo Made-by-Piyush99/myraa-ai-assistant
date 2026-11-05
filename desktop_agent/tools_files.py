@@ -17,6 +17,7 @@ import fnmatch
 import os
 import platform
 import subprocess
+import string
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -24,7 +25,21 @@ from .registry import ToolError, register
 
 HOME = Path(os.path.expanduser("~"))
 
-# Roots under which file operations are freely permitted.
+def _get_system_drives() -> List[Path]:
+    """Detect all mounted storage drives on the computer (C:, D:, etc.)."""
+    drives: List[Path] = []
+    if platform.system() == "Windows":
+        for letter in string.ascii_uppercase:
+            drive_str = f"{letter}:\\"
+            if os.path.exists(drive_str):
+                drives.append(Path(drive_str))
+    else:
+        drives.append(Path("/"))
+    return drives
+
+SYSTEM_DRIVES = _get_system_drives()
+
+# Roots under which file operations are permitted across the computer.
 SAFE_ROOTS: List[Path] = [
     HOME,
     HOME / "Desktop",
@@ -34,7 +49,7 @@ SAFE_ROOTS: List[Path] = [
     HOME / "Music",
     HOME / "Videos",
     Path(os.getcwd()),  # project root
-]
+] + SYSTEM_DRIVES
 
 # Friendly folder aliases -> resolved path.
 FOLDER_ALIASES: Dict[str, Path] = {
@@ -50,41 +65,79 @@ FOLDER_ALIASES: Dict[str, Path] = {
     "c drive": Path("C:\\"),
 }
 
+# Add drive letter aliases (c:, c drive, d:, d drive, etc.)
+for letter in string.ascii_uppercase:
+    drive_root = Path(f"{letter}:\\")
+    l_lower = letter.lower()
+    FOLDER_ALIASES[f"{l_lower} drive"] = drive_root
+    FOLDER_ALIASES[f"{l_lower}:"] = drive_root
+    FOLDER_ALIASES[f"{l_lower}"] = drive_root
+    FOLDER_ALIASES[f"{l_lower}:\\"] = drive_root
+
 
 def _resolve_folder(name_or_path: Optional[str]) -> Path:
     if not name_or_path:
         raise ToolError("Parameter 'name' or 'path' is required.")
-    key = str(name_or_path).strip().lower()
+    raw = str(name_or_path).strip()
+    key = raw.lower().rstrip("/\\")
     if key in FOLDER_ALIASES:
         return FOLDER_ALIASES[key]
-    p = Path(os.path.expandvars(os.path.expanduser(str(name_or_path)))).resolve()
+    # Check if single drive letter passed (e.g. "D:" or "D")
+    if len(raw) == 2 and raw[1] == ":" and raw[0].upper() in string.ascii_uppercase:
+        return Path(f"{raw[0].upper()}:\\")
+    p = Path(os.path.expandvars(os.path.expanduser(raw))).resolve()
     return p
 
 
 def _resolve_file(path: Optional[str], *, must_exist: bool = False) -> Path:
     if not path:
         raise ToolError("Parameter 'path' is required.")
-    p = Path(os.path.expandvars(os.path.expanduser(str(path)))).resolve()
+    raw = str(path).strip()
+    p = Path(os.path.expandvars(os.path.expanduser(raw))).resolve()
     if must_exist and not p.exists():
         raise ToolError(f"File does not exist: {p}")
     return p
 
 
-def _ensure_safe(p: Path, allow_anywhere: bool = False) -> None:
+# Critical OS directories protected from accidental deletion
+_CRITICAL_BLOCKED_PATHS = [
+    r"c:\windows\system32",
+    r"c:\windows\syswow64",
+    r"c:\boot",
+    r"c:\recovery",
+]
+
+
+def _ensure_safe(p: Path, allow_anywhere: bool = False, is_destructive: bool = False) -> None:
     if allow_anywhere:
         return
-    real = str(p)
+    real = str(p).lower()
+    
+    # Protect critical OS core files from destructive deletion
+    if is_destructive:
+        for blocked in _CRITICAL_BLOCKED_PATHS:
+            if real == blocked or real.startswith(blocked + os.sep):
+                raise ToolError(f"Operation blocked: '{p}' is a protected Windows core system directory.")
+        # Do not allow deleting entire root drive directly
+        for drive in SYSTEM_DRIVES:
+            if real == str(drive).lower().rstrip(os.sep):
+                raise ToolError(f"Operation blocked: Cannot delete entire drive root '{p}'.")
+    
+    # Allow all existing drive paths and user folders across the computer
     for root in SAFE_ROOTS:
         try:
-            root_real = str(root.resolve())
+            root_real = str(root.resolve()).lower()
         except Exception:
             continue
-        if real == root_real or real.startswith(root_real + os.sep):
+        if real == root_real or real.startswith(root_real.rstrip(os.sep) + os.sep):
             return
+            
+    # Default permissive on any valid Windows drive
+    if platform.system() == "Windows" and len(real) >= 2 and real[1] == ":":
+        return
+
     raise ToolError(
-        f"Path '{p}' is outside MYRAA's safe folders (Desktop, Documents, "
-        f"Downloads, Pictures, Music, Videos, home, and the project folder). "
-        f"Pass allow_anywhere=true only if you really mean it."
+        f"Path '{p}' is not accessible on this computer."
     )
 
 
@@ -141,7 +194,7 @@ def delete_file(args: Dict[str, Any]) -> Dict[str, Any]:
     path = args.get("path")
     permanent = bool(args.get("permanent", False))
     p = _resolve_file(path, must_exist=True)
-    _ensure_safe(p)
+    _ensure_safe(p, is_destructive=True)
 
     if permanent:
         if p.is_dir():
@@ -262,8 +315,76 @@ def search_files(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+@register("createFolder")
+def create_folder(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Create a new folder/directory anywhere on the computer (Desktop, Downloads, D:, C:\\Folder, etc.)."""
+    path = args.get("path")
+    name = args.get("name")
+    under = args.get("under") or args.get("folder")
+
+    if path:
+        target = Path(os.path.expandvars(os.path.expanduser(str(path)))).resolve()
+    elif name:
+        parent = _resolve_folder(under or "desktop")
+        target = (parent / str(name)).resolve()
+    else:
+        raise ToolError("Provide 'path' or 'name' for the new folder.")
+
+    _ensure_safe(target)
+    if target.exists():
+        if target.is_dir():
+            return {"result": f"Folder already exists: {target}", "path": str(target), "created": False}
+        raise ToolError(f"A file already exists with that name: {target}")
+
+    target.mkdir(parents=True, exist_ok=True)
+    return {"result": f"Created folder successfully: {target}", "path": str(target), "created": True}
+
+
+@register("listDrives")
+def list_drives(args: Dict[str, Any]) -> Dict[str, Any]:
+    """List all available storage drives on the computer (C:, D:, etc.) with total and available space."""
+    import shutil
+    drives_info = []
+    if platform.system() == "Windows":
+        for letter in string.ascii_uppercase:
+            drive_root = f"{letter}:\\"
+            if os.path.exists(drive_root):
+                try:
+                    usage = shutil.disk_usage(drive_root)
+                    total_gb = round(usage.total / (1024 ** 3), 2)
+                    free_gb = round(usage.free / (1024 ** 3), 2)
+                    used_gb = round(usage.used / (1024 ** 3), 2)
+                    percent_used = round((usage.used / usage.total) * 100, 1)
+                    drives_info.append({
+                        "drive": f"{letter}:",
+                        "path": drive_root,
+                        "total_gb": total_gb,
+                        "free_gb": free_gb,
+                        "used_gb": used_gb,
+                        "percent_used": percent_used,
+                    })
+                except Exception:
+                    drives_info.append({"drive": f"{letter}:", "path": drive_root, "status": "mounted"})
+    else:
+        usage = shutil.disk_usage("/")
+        drives_info.append({
+            "drive": "/",
+            "path": "/",
+            "total_gb": round(usage.total / (1024 ** 3), 2),
+            "free_gb": round(usage.free / (1024 ** 3), 2),
+        })
+
+    return {
+        "result": f"Found {len(drives_info)} drive(s) on this computer.",
+        "drives": drives_info,
+        "count": len(drives_info),
+    }
+
+
 __all__ = [
     "create_file",
+    "create_folder",
+    "list_drives",
     "read_file",
     "rename_file",
     "delete_file",

@@ -354,6 +354,46 @@ def set_brightness(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"result": f"Brightness set to {new}%.", "brightness": new}
 
 
+@register("desktopRefresh")
+def desktop_refresh(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Refresh the Windows desktop or active folder/window (simulates desktop right-click refresh / F5).
+    target: 'desktop' (default), 'window', or 'active'.
+    show_desktop: bool (default True if target is desktop) to switch to desktop first.
+    """
+    target = str(args.get("target", "desktop")).lower()
+    show_desktop = bool(args.get("show_desktop", True if target == "desktop" else False))
+
+    if platform.system() == "Windows":
+        try:
+            if target == "desktop" and show_desktop:
+                # Win + D
+                ctypes.windll.user32.keybd_event(0x5B, 0, 0, 0)
+                ctypes.windll.user32.keybd_event(0x44, 0, 0, 0)
+                time.sleep(0.05)
+                ctypes.windll.user32.keybd_event(0x44, 0, 2, 0)
+                ctypes.windll.user32.keybd_event(0x5B, 0, 2, 0)
+                time.sleep(0.15)
+
+            # Send F5 key (VK_F5 = 0x74)
+            ctypes.windll.user32.keybd_event(0x74, 0, 0, 0)
+            time.sleep(0.05)
+            ctypes.windll.user32.keybd_event(0x74, 0, 2, 0)
+            return {"result": f"Refreshed {target} successfully."}
+        except Exception:
+            pass
+
+    try:
+        import pyautogui
+        if target == "desktop" and show_desktop:
+            pyautogui.hotkey("win", "d")
+            time.sleep(0.15)
+        pyautogui.press("f5")
+        return {"result": f"Refreshed {target} successfully."}
+    except Exception as e:
+        raise ToolError(f"Refresh failed: {e}")
+
+
 __all__ = [
     "volume_up",
     "volume_down",
@@ -364,4 +404,5 @@ __all__ = [
     "brightness_up",
     "brightness_down",
     "set_brightness",
+    "desktop_refresh",
 ]
