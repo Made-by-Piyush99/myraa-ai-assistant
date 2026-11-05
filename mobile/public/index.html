@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#07070a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>MYRAA — Anime Voice Companion</title>
+  <title>MYRAA — Mobile Voice & AI Companion</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,6 +21,12 @@
         <span class="brand-badge">VOICE</span>
       </div>
       <div class="header-actions">
+        <!-- Memory Dashboard Trigger -->
+        <button id="btnOpenMemories" class="header-pill-btn" aria-label="Memories">
+          <span>🧠 Memories</span>
+          <span id="headerMemCount" class="badge-count">0</span>
+        </button>
+        <!-- Settings Trigger -->
         <button id="btnSettings" class="icon-btn" aria-label="Settings">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
@@ -40,13 +46,27 @@
       </div>
     </main>
 
+    <!-- Floating YouTube Mini-Player Card (Appears on playYouTubeMusic) -->
+    <div id="ytPlayerCard" class="yt-player-card hidden">
+      <div class="yt-player-header">
+        <div class="yt-player-title">
+          <span class="yt-badge">▶️ YouTube</span>
+          <span id="ytTrackTitle" class="yt-track-name">Now Playing</span>
+        </div>
+        <button id="btnCloseYt" class="yt-close-btn">&times;</button>
+      </div>
+      <div class="yt-frame-wrapper">
+        <iframe id="ytIframe" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+      </div>
+    </div>
+
     <!-- Transcript / Caption Bubble -->
     <section class="caption-container">
       <div id="captionCard" class="caption-card hidden">
         <div class="caption-header">
           <span class="caption-speaker">🌸 Myraa</span>
         </div>
-        <p id="captionText" class="caption-text">"Hi TECH! I'm here. How is your day going?"</p>
+        <p id="captionText" class="caption-text">"Namaste TECH! Me aapki companion Myraa hu. Kahiye me aapki kya madad karu?"</p>
       </div>
     </section>
 
@@ -75,18 +95,133 @@
     </footer>
   </div>
 
-  <!-- Settings Modal -->
+  <!-- Settings Modal with Tabs -->
   <div id="settingsModal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Myraa Settings</h3>
+        <h3>⚙️ Settings & Configuration</h3>
         <button id="btnCloseSettings" class="close-btn">&times;</button>
       </div>
-      <div class="modal-body">
+
+      <!-- Tab Navigation -->
+      <div class="modal-tabs">
+        <button class="tab-btn active" data-tab="tabApi">🔑 API & Test</button>
+        <button class="tab-btn" data-tab="tabVoice">🎙️ Voice</button>
+        <button class="tab-btn" data-tab="tabInfo">ℹ️ System</button>
+      </div>
+
+      <!-- Tab 1: API Key & Live Test -->
+      <div id="tabApi" class="tab-content active">
         <label for="inputApiKey">Google Gemini API Key:</label>
-        <input type="password" id="inputApiKey" placeholder="Enter AI Studio API key..." />
-        <p class="modal-hint">Key is saved securely on your device.</p>
-        <button id="btnSaveKey" class="save-btn">Save Key</button>
+        <div class="input-with-action">
+          <input type="password" id="inputApiKey" placeholder="AIzaSy..." />
+          <button id="btnToggleKeyVis" class="sub-btn" type="button">👁️</button>
+        </div>
+        <p class="modal-hint">Key is stored locally on this device in <code>secrets.json</code>.</p>
+
+        <!-- Live API Test Action -->
+        <div class="api-test-section">
+          <button id="btnTestKey" class="action-btn secondary">
+            <span id="testBtnSpinner" class="spinner hidden"></span>
+            <span>🧪 Test Connection</span>
+          </button>
+          <div id="testResultBox" class="test-result-box hidden"></div>
+        </div>
+
+        <button id="btnSaveKey" class="action-btn primary" style="margin-top: 14px;">💾 Save Key</button>
+      </div>
+
+      <!-- Tab 2: Voice Selection -->
+      <div id="tabVoice" class="tab-content">
+        <p class="tab-desc">Choose Myraa's voice persona for voice calls:</p>
+        <div class="voice-grid">
+          <div class="voice-card active" data-voice="Aoede">
+            <div class="voice-name">🌸 Aoede (Default)</div>
+            <div class="voice-desc">Sweet, soft-spoken anime companion voice. Warm and affectionate.</div>
+          </div>
+          <div class="voice-card" data-voice="Puck">
+            <div class="voice-name">✨ Puck</div>
+            <div class="voice-desc">Energetic, cheerful, playful, and expressive tone.</div>
+          </div>
+          <div class="voice-card" data-voice="Kore">
+            <div class="voice-name">🍃 Kore</div>
+            <div class="voice-desc">Calm, soothing, polite, and reassuring gentle tone.</div>
+          </div>
+          <div class="voice-card" data-voice="Fenrir">
+            <div class="voice-name">🐺 Fenrir</div>
+            <div class="voice-desc">Deep, confident, direct, and authoritative voice.</div>
+          </div>
+          <div class="voice-card" data-voice="Charon">
+            <div class="voice-name">🌌 Charon</div>
+            <div class="voice-desc">Smooth, mature, classic conversational voice.</div>
+          </div>
+        </div>
+        <button id="btnSaveVoice" class="action-btn primary" style="margin-top: 16px;">Save Voice</button>
+      </div>
+
+      <!-- Tab 3: System Diagnostics -->
+      <div id="tabInfo" class="tab-content">
+        <div class="info-list">
+          <div class="info-item">
+            <span>Model:</span>
+            <code>gemini-3.1-flash-live-preview</code>
+          </div>
+          <div class="info-item">
+            <span>Audio Sampling:</span>
+            <span>16kHz In / 24kHz Out PCM</span>
+          </div>
+          <div class="info-item">
+            <span>Environment:</span>
+            <span>Mobile Web / Termux</span>
+          </div>
+          <div class="info-item">
+            <span>YouTube Hub:</span>
+            <span style="color: #34d399;">Active (Embedded Autoplay)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Memory Dashboard Modal (Desktop Parity) -->
+  <div id="memoryModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h3>🧠 Memory Core</h3>
+          <span id="memCountModal" class="badge-count">0</span>
+        </div>
+        <button id="btnCloseMemories" class="close-btn">&times;</button>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div class="memory-filter-row">
+        <button class="filter-pill active" data-category="all">All</button>
+        <button class="filter-pill" data-category="identity">Identity</button>
+        <button class="filter-pill" data-category="preference">Preference</button>
+        <button class="filter-pill" data-category="goal">Goal</button>
+        <button class="filter-pill" data-category="project">Project</button>
+      </div>
+
+      <!-- Memory Items List Container -->
+      <div id="memoryListContainer" class="memory-list-container">
+        <div class="empty-memory-state">Loading memories from brain...</div>
+      </div>
+
+      <!-- Add New Memory Form -->
+      <div class="add-memory-box">
+        <h4>➕ Add New Memory</h4>
+        <div style="display: flex; gap: 8px; margin-top: 8px;">
+          <select id="newMemCategory" class="mem-select">
+            <option value="preference">Preference</option>
+            <option value="identity">Identity</option>
+            <option value="goal">Goal</option>
+            <option value="project">Project</option>
+            <option value="general">General</option>
+          </select>
+          <input type="text" id="newMemText" placeholder="e.g. TECH loves coding in Python..." class="mem-input" />
+        </div>
+        <button id="btnAddMemory" class="action-btn primary" style="margin-top: 10px;">Remember This</button>
       </div>
     </div>
   </div>

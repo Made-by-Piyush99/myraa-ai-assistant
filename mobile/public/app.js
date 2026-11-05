@@ -1,7 +1,13 @@
 /**
  * MYRAA Mobile Voice Edition — Client Application
  * Full-duplex real-time voice streaming with Gemini Live API.
- * Uses native Web Audio API (16kHz in, 24kHz out) & 60fps Canvas particle visualizer.
+ * Features:
+ * - 16kHz microphone stream -> Gemini 3.1 Flash Live -> 24kHz gapless playback
+ * - Live Gemini API Key Connection Tester (/api/config/test)
+ * - Full Memory Core Dashboard (View, Filter, Add, Delete)
+ * - Voice Persona Switcher (Aoede, Puck, Kore, Fenrir, Charon)
+ * - YouTube Mini-Player with Auto-Embed
+ * - 60FPS Audio-Reactive Holographic Particle Visualizer
  */
 
 class MyraaMobileClient {
@@ -12,22 +18,27 @@ class MyraaMobileClient {
     this.micProcessor = null;
     this.analyser = null;
     this.freqData = null;
-    this.isPlaying = false;
     this.isConnected = false;
     this.state = "idle"; // idle | connecting | listening | speaking
 
-    // Scheduled audio queue
+    // Scheduled audio queue for 24kHz gapless playback
     this.nextPlayTime = 0;
     this.activeAudioSources = [];
     this.wakeLock = null;
 
+    // State data
+    this.memories = [];
+    this.activeCategoryFilter = "all";
+    this.selectedVoice = "Aoede";
+
     this.initDOMElements();
     this.initCanvasVisualizer();
     this.bindEvents();
-    this.checkConfig();
+    this.loadInitialConfig();
   }
 
   initDOMElements() {
+    // Stage & Controls
     this.btnToggleCall = document.getElementById("btnToggleCall");
     this.iconMic = document.getElementById("iconMic");
     this.iconHangup = document.getElementById("iconHangup");
@@ -40,34 +51,165 @@ class MyraaMobileClient {
     this.waveBars = document.querySelectorAll(".wave-bar");
     this.waveContainer = document.getElementById("waveBars");
 
-    // Modal
+    // Header Badges
+    this.btnOpenMemories = document.getElementById("btnOpenMemories");
+    this.headerMemCount = document.getElementById("headerMemCount");
     this.btnSettings = document.getElementById("btnSettings");
+
+    // Settings Modal
     this.settingsModal = document.getElementById("settingsModal");
     this.btnCloseSettings = document.getElementById("btnCloseSettings");
-    this.btnSaveKey = document.getElementById("btnSaveKey");
+    this.tabButtons = document.querySelectorAll(".modal-tabs .tab-btn");
+    this.tabContents = document.querySelectorAll(".tab-content");
+
+    // API Key & Test Tab
     this.inputApiKey = document.getElementById("inputApiKey");
+    this.btnToggleKeyVis = document.getElementById("btnToggleKeyVis");
+    this.btnTestKey = document.getElementById("btnTestKey");
+    this.testBtnSpinner = document.getElementById("testBtnSpinner");
+    this.testResultBox = document.getElementById("testResultBox");
+    this.btnSaveKey = document.getElementById("btnSaveKey");
+
+    // Voice Tab
+    this.voiceCards = document.querySelectorAll(".voice-card");
+    this.btnSaveVoice = document.getElementById("btnSaveVoice");
+
+    // Memory Modal
+    this.memoryModal = document.getElementById("memoryModal");
+    this.btnCloseMemories = document.getElementById("btnCloseMemories");
+    this.memCountModal = document.getElementById("memCountModal");
+    this.filterPills = document.querySelectorAll(".filter-pill");
+    this.memoryListContainer = document.getElementById("memoryListContainer");
+    this.newMemCategory = document.getElementById("newMemCategory");
+    this.newMemText = document.getElementById("newMemText");
+    this.btnAddMemory = document.getElementById("btnAddMemory");
+
+    // YouTube Mini-Player
+    this.ytPlayerCard = document.getElementById("ytPlayerCard");
+    this.ytTrackTitle = document.getElementById("ytTrackTitle");
+    this.ytIframe = document.getElementById("ytIframe");
+    this.btnCloseYt = document.getElementById("btnCloseYt");
   }
 
   bindEvents() {
+    // Call Button
     this.btnToggleCall.addEventListener("click", () => this.toggleCall());
+
+    // Settings Modal
     this.btnSettings.addEventListener("click", () => this.openSettings());
     this.btnCloseSettings.addEventListener("click", () => this.closeSettings());
+    this.settingsModal.addEventListener("click", (e) => {
+      if (e.target === this.settingsModal) this.closeSettings();
+    });
+
+    // Tab Navigation
+    this.tabButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetTab = btn.getAttribute("data-tab");
+        this.switchTab(targetTab);
+      });
+    });
+
+    // API Key Visibility Toggle
+    this.btnToggleKeyVis.addEventListener("click", () => {
+      const isPwd = this.inputApiKey.type === "password";
+      this.inputApiKey.type = isPwd ? "text" : "password";
+      this.btnToggleKeyVis.textContent = isPwd ? "🙈" : "👁️";
+    });
+
+    // Live API Test Button
+    this.btnTestKey.addEventListener("click", () => this.testApiKeyConnection());
+
+    // Save API Key Button
     this.btnSaveKey.addEventListener("click", () => this.saveApiKey());
 
-    // Window resize for canvas
+    // Voice Selection Cards
+    this.voiceCards.forEach((card) => {
+      card.addEventListener("click", () => {
+        this.voiceCards.forEach((c) => c.classList.remove("active"));
+        card.classList.add("active");
+        this.selectedVoice = card.getAttribute("data-voice");
+      });
+    });
+    this.btnSaveVoice.addEventListener("click", () => this.saveVoicePreference());
+
+    // Memory Modal
+    this.btnOpenMemories.addEventListener("click", () => this.openMemoryModal());
+    this.btnCloseMemories.addEventListener("click", () => this.closeMemoryModal());
+    this.memoryModal.addEventListener("click", (e) => {
+      if (e.target === this.memoryModal) this.closeMemoryModal();
+    });
+
+    // Memory Filters
+    this.filterPills.forEach((pill) => {
+      pill.addEventListener("click", () => {
+        this.filterPills.forEach((p) => p.classList.remove("active"));
+        pill.classList.add("active");
+        this.activeCategoryFilter = pill.getAttribute("data-category");
+        this.renderMemories();
+      });
+    });
+
+    // Add Memory
+    this.btnAddMemory.addEventListener("click", () => this.addNewMemory());
+    this.newMemText.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this.addNewMemory();
+    });
+
+    // YouTube Mini-Player Close
+    this.btnCloseYt.addEventListener("click", () => this.closeYouTubePlayer());
+
+    // Window resize for visualizer canvas
     window.addEventListener("resize", () => this.resizeCanvas());
   }
 
-  async checkConfig() {
+  // --- Initial Configuration & State Fetching ---
+  async loadInitialConfig() {
     try {
       const res = await fetch("/api/config");
       const data = await res.json();
+
+      if (data.voice) {
+        this.selectedVoice = data.voice;
+        this.voiceCards.forEach((card) => {
+          if (card.getAttribute("data-voice") === data.voice) {
+            card.classList.add("active");
+          } else {
+            card.classList.remove("active");
+          }
+        });
+      }
+
+      if (typeof data.memoryCount === "number") {
+        this.updateMemoryCounts(data.memoryCount);
+      }
+
       if (!data.hasApiKey) {
         this.openSettings();
+        this.switchTab("tabApi");
       }
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.warn("Could not load initial config:", err);
     }
+  }
+
+  // --- Tab Management ---
+  switchTab(tabId) {
+    this.tabButtons.forEach((btn) => {
+      if (btn.getAttribute("data-tab") === tabId) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    this.tabContents.forEach((content) => {
+      if (content.id === tabId) {
+        content.classList.add("active");
+      } else {
+        content.classList.remove("active");
+      }
+    });
   }
 
   openSettings() {
@@ -78,19 +220,72 @@ class MyraaMobileClient {
     this.settingsModal.classList.add("hidden");
   }
 
-  async saveApiKey() {
+  // --- API Testing & Management ---
+  async testApiKeyConnection() {
     const key = this.inputApiKey.value.trim();
-    if (!key) return alert("Please enter a valid Gemini API key.");
+
+    this.testBtnSpinner.classList.remove("hidden");
+    this.btnTestKey.disabled = true;
+    this.testResultBox.className = "test-result-box";
+    this.testResultBox.innerHTML = `<span>Testing connection to Google Gemini API...</span>`;
+    this.testResultBox.classList.remove("hidden");
+
     try {
-      const res = await fetch("/api/config/apikey", {
+      const res = await fetch("/api/config/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: key }),
       });
       const data = await res.json();
+
+      if (data.ok) {
+        this.testResultBox.className = "test-result-box success";
+        this.testResultBox.innerHTML = `
+          <div style="font-weight: 600;">✅ Connection Successful!</div>
+          <div style="font-size: 0.8rem; margin-top: 4px; opacity: 0.9;">
+            Verified with Gemini 2.5 Flash in <strong>${data.latencyMs}ms</strong>. Key is valid and active.
+          </div>
+        `;
+      } else {
+        this.testResultBox.className = "test-result-box error";
+        this.testResultBox.innerHTML = `
+          <div style="font-weight: 600;">❌ Test Failed</div>
+          <div style="font-size: 0.8rem; margin-top: 4px; word-break: break-word;">
+            ${data.error || "Could not authenticate key."}
+          </div>
+        `;
+      }
+    } catch (err) {
+      this.testResultBox.className = "test-result-box error";
+      this.testResultBox.innerHTML = `
+        <div style="font-weight: 600;">❌ Network Error</div>
+        <div style="font-size: 0.8rem; margin-top: 4px;">${err.message}</div>
+      `;
+    } finally {
+      this.testBtnSpinner.classList.add("hidden");
+      this.btnTestKey.disabled = false;
+    }
+  }
+
+  async saveApiKey() {
+    const key = this.inputApiKey.value.trim();
+    if (!key) {
+      alert("Please enter a valid Gemini API key first.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/config/apikey", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: key, voice: this.selectedVoice }),
+      });
+      const data = await res.json();
+
       if (data.ok) {
         this.closeSettings();
         this.statusText.textContent = "Key Saved. Tap to Connect";
+        alert("API Key saved successfully! You can now start voice conversation.");
       } else {
         alert(data.error || "Failed to save key");
       }
@@ -99,7 +294,153 @@ class MyraaMobileClient {
     }
   }
 
-  // --- Call Lifecycle ---
+  async saveVoicePreference() {
+    try {
+      const res = await fetch("/api/config/apikey", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice: this.selectedVoice }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert(`Voice updated to ${this.selectedVoice}!`);
+        this.closeSettings();
+      }
+    } catch (err) {
+      alert("Error saving voice: " + err.message);
+    }
+  }
+
+  // --- Memory Core Dashboard ---
+  openMemoryModal() {
+    this.memoryModal.classList.remove("hidden");
+    this.fetchMemories();
+  }
+
+  closeMemoryModal() {
+    this.memoryModal.classList.add("hidden");
+  }
+
+  updateMemoryCounts(count) {
+    if (this.headerMemCount) this.headerMemCount.textContent = count;
+    if (this.memCountModal) this.memCountModal.textContent = count;
+  }
+
+  async fetchMemories() {
+    this.memoryListContainer.innerHTML = `<div class="empty-memory-state">Loading memories from brain...</div>`;
+    try {
+      const res = await fetch("/api/memories");
+      const data = await res.json();
+      this.memories = data.memories || [];
+      this.updateMemoryCounts(this.memories.length);
+      this.renderMemories();
+    } catch (err) {
+      this.memoryListContainer.innerHTML = `<div class="empty-memory-state" style="color: #f87171;">Failed to load memories: ${err.message}</div>`;
+    }
+  }
+
+  renderMemories() {
+    const filter = this.activeCategoryFilter.toLowerCase();
+    const filtered = filter === "all"
+      ? this.memories
+      : this.memories.filter((m) => (m.category || "").toLowerCase() === filter);
+
+    if (filtered.length === 0) {
+      this.memoryListContainer.innerHTML = `
+        <div class="empty-memory-state">
+          No memories found${filter !== "all" ? ` for category "${filter}"` : ""}.
+        </div>
+      `;
+      return;
+    }
+
+    // Render items sorted newest first
+    const sorted = [...filtered].reverse();
+    this.memoryListContainer.innerHTML = sorted
+      .map(
+        (m) => `
+        <div class="memory-card-item" data-id="${m.id}">
+          <div class="memory-card-header">
+            <span class="memory-cat-badge ${m.category || 'general'}">${m.category || 'general'}</span>
+            <button class="memory-del-btn" data-id="${m.id}" title="Forget memory">🗑️</button>
+          </div>
+          <div class="memory-card-text">${this.escapeHtml(m.text)}</div>
+        </div>
+      `
+      )
+      .join("");
+
+    // Bind delete buttons
+    this.memoryListContainer.querySelectorAll(".memory-del-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const memId = btn.getAttribute("data-id");
+        this.deleteMemory(memId);
+      });
+    });
+  }
+
+  async addNewMemory() {
+    const text = this.newMemText.value.trim();
+    const category = this.newMemCategory.value;
+    if (!text) {
+      alert("Please enter memory text to remember.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/memories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, text }),
+      });
+      const data = await res.json();
+
+      if (data.ok && data.memory) {
+        this.newMemText.value = "";
+        this.memories.push(data.memory);
+        this.updateMemoryCounts(this.memories.length);
+        this.renderMemories();
+      } else {
+        alert(data.error || "Failed to add memory");
+      }
+    } catch (err) {
+      alert("Error adding memory: " + err.message);
+    }
+  }
+
+  async deleteMemory(id) {
+    if (!confirm("Are you sure you want Myraa to forget this memory?")) return;
+
+    try {
+      const res = await fetch(`/api/memories/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
+      if (data.ok) {
+        this.memories = this.memories.filter((m) => m.id !== id);
+        this.updateMemoryCounts(this.memories.length);
+        this.renderMemories();
+      } else {
+        alert(data.error || "Failed to delete memory");
+      }
+    } catch (err) {
+      alert("Error deleting memory: " + err.message);
+    }
+  }
+
+  // --- YouTube Mini-Player ---
+  playYouTubeTrack(title, embedUrl) {
+    this.ytTrackTitle.textContent = title || "Now Playing";
+    this.ytIframe.src = embedUrl;
+    this.ytPlayerCard.classList.remove("hidden");
+  }
+
+  closeYouTubePlayer() {
+    this.ytIframe.src = "";
+    this.ytPlayerCard.classList.add("hidden");
+  }
+
+  // --- Call Lifecycle & Audio Streaming ---
   async toggleCall() {
     if (this.isConnected) {
       this.disconnect();
@@ -113,24 +454,24 @@ class MyraaMobileClient {
     this.statusText.textContent = "Starting audio engine...";
 
     try {
-      // 1. Initialize Web Audio Context on user tap (browser policy requirement)
+      // 1. Initialize Web Audio Context on user gesture (browser requirement)
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       this.audioContext = new AudioCtx({ sampleRate: 24000 });
       if (this.audioContext.state === "suspended") {
         await this.audioContext.resume();
       }
 
-      // Analyser for output/input visualizer
+      // Analyser for output & visualizer
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 64;
       this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
 
-      // 2. Request Screen Wake Lock (prevents mobile phone screen from sleeping)
+      // 2. Request Screen Wake Lock (prevents mobile display from turning off during call)
       if ("wakeLock" in navigator) {
         try {
           this.wakeLock = await navigator.wakeLock.request("screen");
         } catch {
-          /* optional feature */
+          /* optional */
         }
       }
 
@@ -193,16 +534,11 @@ class MyraaMobileClient {
       const pcm16 = this.floatTo16BitPCM(inputData);
       const base64Audio = this.base64ArrayBuffer(pcm16);
 
+      // Send to server
       this.ws.send(
         JSON.stringify({
-          realtimeInput: {
-            mediaChunks: [
-              {
-                mimeType: "audio/pcm",
-                data: base64Audio,
-              },
-            ],
-          },
+          type: "audio_chunk",
+          data: base64Audio,
         })
       );
     };
@@ -264,6 +600,11 @@ class MyraaMobileClient {
         this.stopAllAudio();
         this.setState("listening");
         this.statusText.textContent = "Listening...";
+      } else if (msg.type === "youtube_play") {
+        this.playYouTubeTrack(msg.title, msg.embedUrl);
+      } else if (msg.type === "memory_saved") {
+        this.showCaption(`Saved to memory: "${msg.memory?.text || ''}"`);
+        this.fetchMemories();
       } else if (msg.type === "error") {
         alert(msg.error);
         this.disconnect("Error occurred");
@@ -288,7 +629,7 @@ class MyraaMobileClient {
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
 
-    // Connect to analyser and speakers
+    // Connect to analyser & speakers
     source.connect(this.analyser);
     this.analyser.connect(this.audioContext.destination);
 
@@ -328,11 +669,22 @@ class MyraaMobileClient {
   }
 
   showCaption(text) {
+    if (!text) return;
     this.captionCard.classList.remove("hidden");
     this.captionText.textContent = `"${text}"`;
   }
 
   // --- Utilities ---
+  escapeHtml(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   floatTo16BitPCM(input) {
     const buffer = new ArrayBuffer(input.length * 2);
     const view = new DataView(buffer);
@@ -395,10 +747,10 @@ class MyraaMobileClient {
   }
 
   initParticles() {
-    const count = 40;
+    const count = 42;
     this.particles = Array.from({ length: count }, () => ({
       angle: Math.random() * Math.PI * 2,
-      distance: 90 + Math.random() * 60,
+      distance: 90 + Math.random() * 65,
       size: 1.5 + Math.random() * 2,
       speed: 0.005 + Math.random() * 0.015,
       color: Math.random() > 0.5 ? "rgba(192, 132, 252, " : "rgba(56, 189, 248, ",

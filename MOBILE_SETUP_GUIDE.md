@@ -116,14 +116,18 @@ Iska matlab aapka server mobile par successfully live ho gaya hai!
 3. Address bar me yeh URL type karein:
    👉 **`http://localhost:3000`**
 4. Screen par Myraa ka visual interface khul jayega:
-   - Agar pehli baar khol rahe hain, toh **API Key Prompt** aayega.
-   - Apni free Google Gemini API Key ([Google AI Studio](https://aistudio.google.com/) se) paste karke **Save** karein.
-5. Ab **🎙️ Tap to Speak** button dabayein:
+   - Top right me **⚙️ Settings** icon par tap karein:
+     - **🔑 API & Test Tab:** Apni Google Gemini API Key ([Google AI Studio](https://aistudio.google.com/) se) paste karein aur **"🧪 Test Connection"** button dabayein. Yeh turant live verify karke bata dega ki key active hai ya nahi aur kitne milliseconds me connect hui!
+     - **💾 Save Key** button dabayein.
+     - **🎙️ Voice Tab:** Myraa ki voice choose karein (*Aoede*, *Puck*, *Kore*, *Fenrir*, *Charon*) aur Save karein.
+5. **🧠 Memories Dashboard (Desktop Parity):**
+   - Header me **🧠 Memories** button par tap karke aap Myraa ki memories dekh sakte hain, filter kar sakte hain, nayi memory add kar sakte hain ya purani delete kar sakte hain.
+6. Ab **🎙️ Tap to Speak** button dabayein:
    - Chrome aapse **Microphone** ki permission mangega -> **Allow** par tap karein.
-6. Ab Myraa se Hindi ya English me bolna shuru karein!
+7. Ab Myraa se Hindi ya English me live full-duplex voice me baatchit shuru karein!
    - *"Namaste Myraa, kaisi ho?"*
-   - *"Play Believer song on YouTube"*
-   - *"Mujhe koi acchi kahani sunao"*
+   - *"Play Believer song on YouTube"* (screen par automatically YouTube mini-player open ho jayega!)
+   - *"Yaad rakhna mera favourite color blue hai"* (automatically memory me save ho jayega!)
 
 ---
 
