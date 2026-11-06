@@ -154,6 +154,14 @@ window.MobileBridge = {
     return "Mock Screen Content: WhatsApp, Messages, YouTube";
   },
 
+  sendWhatsApp: function(contactOrNumber, message) {
+    if (this.isAndroid() && typeof window.MyraaNative.sendWhatsApp === 'function') {
+      return window.MyraaNative.sendWhatsApp(contactOrNumber, message);
+    }
+    console.log('[Dev Mock] Send WhatsApp to', contactOrNumber, ':', message);
+    return true;
+  },
+
   openApp: function(nameOrPackage) {
     if (this.isAndroid()) {
       return window.MyraaNative.openApp(nameOrPackage);

@@ -129,6 +129,11 @@ public class MyraaNativeBridge {
     }
 
     @JavascriptInterface
+    public boolean sendWhatsApp(String contactOrNumber, String message) {
+        return deviceManager.sendWhatsAppMessage(contactOrNumber, message);
+    }
+
+    @JavascriptInterface
     public boolean typeText(String text) {
         MyraaAccessibilityService service = MyraaAccessibilityService.getInstance();
         return service != null && service.typeText(text);
@@ -304,6 +309,14 @@ public class MyraaNativeBridge {
                     res.put("success", true);
                     res.put("location", new JSONObject(getLocation()));
                     res.put("result", "Retrieved GPS Location.");
+                    break;
+
+                case "sendWhatsAppMessage":
+                    String who = args.optString("contactOrNumber", args.optString("target", ""));
+                    String msg = args.optString("message", "");
+                    boolean waOk = sendWhatsApp(who, msg);
+                    res.put("success", waOk);
+                    res.put("result", waOk ? "WhatsApp message dispatched to " + who : "Failed to open WhatsApp.");
                     break;
 
                 case "mobileTorch":

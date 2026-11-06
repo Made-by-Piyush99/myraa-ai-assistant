@@ -318,6 +318,15 @@ public class MyraaLocalServer {
             return;
         }
 
+        // 13. Send WhatsApp Message
+        if (path.equals("/api/whatsapp") && "POST".equals(method)) {
+            String to = body.optString("to", body.optString("contact", ""));
+            String msg = body.optString("message", body.optString("text", "Hello"));
+            boolean ok = deviceManager.sendWhatsAppMessage(to, msg);
+            sendActionResponse(out, "sendWhatsApp: " + to, ok);
+            return;
+        }
+
         // 13. Universal Command Dispatcher (Jarvis / Siri style)
         if (path.equals("/api/command") && "POST".equals(method)) {
             String cmd = body.optString("command", "").toLowerCase().trim();

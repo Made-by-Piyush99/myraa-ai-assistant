@@ -277,6 +277,33 @@
     }, durationMs);
   }
 
+  // Studio Audio Playback Engine (Gapless Aoede Voice like PC & Web)
+  function playStudioAudio(base64Data, mimeType) {
+    if (!base64Data) return;
+    setAvatarState('talking');
+    statusText.textContent = "MYRAA Speaking (Studio Voice)...";
+
+    try {
+      if (window.myraaCurrentAudio) {
+        try { window.myraaCurrentAudio.pause(); } catch (e) {}
+      }
+      const audio = new Audio(`data:${mimeType || 'audio/mp3'};base64,${base64Data}`);
+      window.myraaCurrentAudio = audio;
+      audio.onended = () => {
+        setAvatarState('idle');
+        statusText.textContent = "Tap Mic to Talk";
+        liveLatency.textContent = "Ready";
+      };
+      audio.play().catch(e => {
+        console.warn("Studio audio play notice:", e);
+        MobileBridge.speak(subtitleText.textContent);
+      });
+    } catch (e) {
+      console.warn("Studio audio playback error:", e);
+      MobileBridge.speak(subtitleText.textContent);
+    }
+  }
+
   // Core Query Processing: Offline Parser + Gemini 2.5 Flash Tool Calling
   async function handleUserQuery(query) {
     stopListeningMode();
@@ -313,11 +340,34 @@
       return true;
     }
 
-    // WhatsApp
+    // WhatsApp Send Message & Open
     if (q.includes('whatsapp')) {
-      speakAndDisplay("WhatsApp open kar rahi hoon!");
-      setTimeout(() => MobileBridge.openApp('com.whatsapp'), 600);
-      return true;
+      if (q.includes('message') || q.includes('bhejo') || q.includes('send') || q.includes('karo') || q.includes('msg')) {
+        let target = "";
+        let message = "";
+        if (text.includes(':')) {
+          const parts = text.split(':');
+          message = parts.slice(1).join(':').trim();
+          target = parts[0].replace(/whatsapp/gi, '').replace(/par/gi, '').replace(/ko/gi, '').replace(/message/gi, '').replace(/bhejo/gi, '').replace(/send/gi, '').replace(/to/gi, '').trim();
+        } else {
+          const clean = text.replace(/whatsapp/gi, '').replace(/par/gi, '').replace(/message/gi, '').replace(/bhejo/gi, '').trim();
+          const words = clean.split(/\s+/);
+          if (words.length > 1) {
+            target = words[0].replace(/ko$/i, '');
+            message = words.slice(1).join(' ');
+          } else {
+            target = clean;
+            message = "Hello!";
+          }
+        }
+        speakAndDisplay(`${target ? target + ' ko ' : ''}WhatsApp message send kar rahi hoon!`);
+        MobileBridge.sendWhatsApp(target, message);
+        return true;
+      } else {
+        speakAndDisplay("WhatsApp open kar rahi hoon!");
+        setTimeout(() => MobileBridge.openApp('com.whatsapp'), 600);
+        return true;
+      }
     }
 
     // Instagram
@@ -505,6 +555,50 @@
           parameters: { type: "OBJECT", properties: {} }
         },
         {
+          name: "sendWhatsAppMessage",
+          description: "Sends a WhatsApp message to a specific contact or phone number. Use when the user asks to send a WhatsApp message, chat with someone on WhatsApp, or send a text on WhatsApp.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              contactOrNumber: { type: "STRING", description: "The contact name (e.g. Rahul, Piyush, Mummy) or phone number." },
+              message: { type: "STRING", description: "The message text to send." }
+            },
+            required: ["message"]
+          }
+        },
+        {
+          name: "takeScreenshot",
+          description: "Captures a screenshot of the phone screen.",
+          parameters: { type: "OBJECT", properties: {} }
+        },
+        {
+          name: "lockScreen",
+          description: "Locks the Android phone screen.",
+          parameters: { type: "OBJECT", properties: {} }
+        },
+        {
+          name: "clickText",
+          description: "Clicks on any button or text element visible on the screen.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              text: { type: "STRING", description: "The text of the button to click." }
+            },
+            required: ["text"]
+          }
+        },
+        {
+          name: "typeText",
+          description: "Types text into the active input box on the screen.",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              text: { type: "STRING", description: "The text to type." }
+            },
+            required: ["text"]
+          }
+        },
+        {
           name: "readScreenContent",
           description: "Extracts and reads the visible text and buttons currently on the user's screen.",
           parameters: { type: "OBJECT", properties: {} }
@@ -573,9 +667,13 @@ You are running as a native Android app on Piyush's mobile phone with full Super
       const parts = candidate.content.parts || [];
       let toolCalled = false;
       let replySpeech = "";
+      let audioPlayed = false;
 
       for (const part of parts) {
-        if (part.functionCall) {
+        if (part.inlineData && part.inlineData.data) {
+          playStudioAudio(part.inlineData.data, part.inlineData.mimeType || "audio/mp3");
+          audioPlayed = true;
+        } else if (part.functionCall) {
           toolCalled = true;
           const fn = part.functionCall;
           const resultText = handleGeminiToolCall(fn.name, fn.args || {});
@@ -586,7 +684,11 @@ You are running as a native Android app on Piyush's mobile phone with full Super
       }
 
       conversationHistory.push(candidate.content);
-      speakAndDisplay(replySpeech || "Command execute kar diya hai!");
+      if (audioPlayed) {
+        subtitleText.textContent = replySpeech || "MYRAA (Studio Voice Active)";
+      } else {
+        speakAndDisplay(replySpeech || "Command execute kar diya hai!");
+      }
 
     } catch (err) {
       console.error("Gemini API fetch exception:", err);
@@ -598,6 +700,28 @@ You are running as a native Android app on Piyush's mobile phone with full Super
   // Handle Tool Calls returned by Gemini
   function handleGeminiToolCall(name, args) {
     switch (name) {
+      case "sendWhatsAppMessage":
+        const target = args.contactOrNumber || args.target || "";
+        const msg = args.message || "";
+        MobileBridge.sendWhatsApp(target, msg);
+        return `${target ? target + ' ko ' : ''}WhatsApp par message dispatch kiya: "${msg}"!`;
+
+      case "takeScreenshot":
+        MobileBridge.takeScreenshot();
+        return "Screenshot capture kar liya!";
+
+      case "lockScreen":
+        MobileBridge.lockScreen();
+        return "Screen lock kar di hai!";
+
+      case "clickText":
+        MobileBridge.clickByText(args.text);
+        return `${args.text} par click kar diya!`;
+
+      case "typeText":
+        MobileBridge.typeText(args.text);
+        return `${args.text} type kar diya!`;
+
       case "openApp":
         const app = args.appName || "youtube";
         MobileBridge.openApp(app);
@@ -820,10 +944,16 @@ You are running as a native Android app on Piyush's mobile phone with full Super
   }
   loadVoiceSettings();
 
+  // Live API Key Tester Elements
+  const btnTestKey = document.getElementById('btnTestKey');
+  const testBtnSpinner = document.getElementById('testBtnSpinner');
+  const testResultBox = document.getElementById('testResultBox');
+
   // Settings Modal Open
   btnSettings.addEventListener('click', () => {
     modalSettings.classList.remove('hidden');
     inputApiKey.value = localStorage.getItem('MYRAA_API_KEY') || '';
+    if (testResultBox) testResultBox.classList.add('hidden');
     loadVoiceSettings();
   });
   btnCloseSettings.addEventListener('click', () => {
@@ -834,6 +964,68 @@ You are running as a native Android app on Piyush's mobile phone with full Super
     localStorage.setItem('MYRAA_API_KEY', val);
     speakAndDisplay("Gemini API Key save ho gaya hai Piyu!");
   });
+
+  // Live API Key Connection Tester
+  if (btnTestKey && inputApiKey && testResultBox) {
+    btnTestKey.addEventListener('click', async () => {
+      const key = inputApiKey.value.trim().replace(/^["']|["']$/g, '');
+      if (!key) {
+        testResultBox.className = "test-result-box error";
+        testResultBox.innerHTML = "<strong>⚠️ Key Missing</strong><br>Pehle apna Google Gemini API Key paste karein.";
+        testResultBox.classList.remove('hidden');
+        return;
+      }
+
+      if (testBtnSpinner) testBtnSpinner.classList.remove('hidden');
+      btnTestKey.disabled = true;
+      testResultBox.className = "test-result-box";
+      testResultBox.innerHTML = "<span>Connecting to Google Gemini API...</span>";
+      testResultBox.classList.remove('hidden');
+
+      const startTime = Date.now();
+      const testModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+      let verified = false;
+      let usedModel = "";
+      let errDetail = "";
+
+      for (const m of testModels) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: 'Respond with OK.' }] }]
+            })
+          });
+          const data = await res.json();
+          if (data.candidates && data.candidates.length > 0) {
+            verified = true;
+            usedModel = m;
+            break;
+          } else if (data.error) {
+            errDetail = data.error.message || JSON.stringify(data.error);
+          }
+        } catch (e) {
+          errDetail = e.message || String(e);
+        }
+      }
+
+      const elapsed = Date.now() - startTime;
+      if (testBtnSpinner) testBtnSpinner.classList.add('hidden');
+      btnTestKey.disabled = false;
+
+      if (verified) {
+        localStorage.setItem('MYRAA_API_KEY', key);
+        testResultBox.className = "test-result-box success";
+        testResultBox.innerHTML = `<strong>✅ Connection Successful!</strong><br>Verified with <strong>${usedModel}</strong> in <strong>${elapsed}ms</strong>.<br>Key is valid and automatically saved!`;
+        speakAndDisplay("API Key verified ho gaya hai Piyu! Ab main poori tarah active hoon.");
+      } else {
+        testResultBox.className = "test-result-box error";
+        testResultBox.innerHTML = `<strong>❌ Test Failed</strong><br>${errDetail || 'API key could not be authenticated.'}<br><small style="opacity:0.8;">Make sure key is from Google AI Studio.</small>`;
+      }
+    });
+  }
 
   // Voice Engine Toggle
   if (selectVoiceEngine) {

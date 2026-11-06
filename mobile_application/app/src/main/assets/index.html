@@ -210,7 +210,14 @@
         <div class="modal-body">
           <label class="form-label">Google Gemini API Key:</label>
           <input type="password" id="inputApiKey" class="text-input" placeholder="AIzaSy..." />
-          <button id="btnSaveKey" class="primary-btn full-btn" style="margin-top: 8px;">Save Gemini Key</button>
+          <div class="api-test-row">
+            <button id="btnTestKey" class="btn-test-key" type="button">
+              <span id="testBtnSpinner" class="test-spinner hidden"></span>
+              <span>⚡ Test API Key</span>
+            </button>
+            <button id="btnSaveKey" class="primary-btn" style="flex: 1;" type="button">Save Key</button>
+          </div>
+          <div id="testResultBox" class="test-result-box hidden"></div>
 
           <hr style="border: 0; border-top: 1px solid var(--border-glass); margin: 20px 0 16px;" />
 

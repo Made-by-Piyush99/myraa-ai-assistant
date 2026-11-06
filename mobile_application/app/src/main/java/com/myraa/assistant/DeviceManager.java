@@ -313,6 +313,51 @@ public class DeviceManager {
     }
 
     /**
+     * Sends a WhatsApp message autonomously.
+     * Supports phone numbers or contact names with direct intent and web fallback.
+     */
+    public boolean sendWhatsAppMessage(String phoneOrContact, String message) {
+        try {
+            String text = message != null ? message : "";
+            String target = phoneOrContact != null ? phoneOrContact.trim() : "";
+            String digitsOnly = target.replaceAll("[^0-9+]", "");
+
+            // If phone number with digits
+            if (digitsOnly.length() >= 10) {
+                if (!digitsOnly.startsWith("+") && digitsOnly.length() == 10) {
+                    digitsOnly = "91" + digitsOnly; // Default India prefix
+                }
+                String url = "https://api.whatsapp.com/send?phone=" + digitsOnly + "&text=" + java.net.URLEncoder.encode(text, "UTF-8");
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(Uri.parse(url));
+                intent.setPackage("com.whatsapp");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                return true;
+            }
+
+            // General WhatsApp send intent
+            Intent sendIntent = new Intent(Intent.ACTION_SEND);
+            sendIntent.setType("text/plain");
+            sendIntent.setPackage("com.whatsapp");
+            sendIntent.putExtra(Intent.EXTRA_TEXT, text);
+            sendIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(sendIntent);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                String url = "https://api.whatsapp.com/send?text=" + java.net.URLEncoder.encode(message != null ? message : "", "UTF-8");
+                Intent fallback = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(fallback);
+                return true;
+            } catch (Exception ignored) {}
+        }
+        return false;
+    }
+
+    /**
      * Opens system Accessibility Settings screen so user can grant MYRAA touch control.
      */
     public void openAccessibilitySettings() {
