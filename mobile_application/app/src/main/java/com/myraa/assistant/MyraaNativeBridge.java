@@ -6,6 +6,13 @@ import android.os.Build;
 import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import javax.net.ssl.HttpsURLConnection;
 
 public class MyraaNativeBridge {
 
@@ -15,6 +22,136 @@ public class MyraaNativeBridge {
     public MyraaNativeBridge(Context context) {
         this.context = context;
         this.deviceManager = new DeviceManager(context);
+    }
+
+    /**
+     * Native Gemini API Key Tester.
+     * Direct HTTPS request from Android Java with 0 CORS restrictions.
+     */
+    @JavascriptInterface
+    public String testGeminiApiKey(String apiKey) {
+        JSONObject res = new JSONObject();
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            try {
+                res.put("ok", false);
+                res.put("error", "API Key khali hai. Kripya apna Google Gemini API Key paste karein.");
+            } catch (Exception ignored) {}
+            return res.toString();
+        }
+
+        String cleanKey = apiKey.trim().replace("\"", "").replace("'", "").replaceAll("\\s+", "");
+        String[] testModels = new String[]{"gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"};
+
+        long startTime = System.currentTimeMillis();
+        String lastError = "";
+        int lastCode = 0;
+
+        for (String model : testModels) {
+            try {
+                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + cleanKey);
+                HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.setDoOutput(true);
+
+                String payload = "{\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"ping\"}]}]}";
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(payload.getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                }
+
+                int code = conn.getResponseCode();
+                lastCode = code;
+
+                if (code == 200) {
+                    long elapsed = System.currentTimeMillis() - startTime;
+                    res.put("ok", true);
+                    res.put("model", model);
+                    res.put("latencyMs", elapsed);
+                    return res.toString();
+                } else {
+                    InputStream es = conn.getErrorStream();
+                    if (es != null) {
+                        BufferedReader r = new BufferedReader(new InputStreamReader(es, StandardCharsets.UTF_8));
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = r.readLine()) != null) sb.append(line);
+                        lastError = sb.toString();
+                    }
+                    if (code == 400 || code == 403) {
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                lastError = e.getMessage() != null ? e.getMessage() : e.toString();
+            }
+        }
+
+        try {
+            res.put("ok", false);
+            res.put("code", lastCode);
+            String humanErr = lastError;
+            try {
+                JSONObject parsed = new JSONObject(lastError);
+                if (parsed.has("error") && parsed.getJSONObject("error").has("message")) {
+                    humanErr = parsed.getJSONObject("error").getString("message");
+                }
+            } catch (Exception ignored) {}
+            res.put("error", humanErr != null && !humanErr.isEmpty() ? humanErr : "Network / Connection error. Check your internet connection.");
+        } catch (Exception ignored) {}
+        return res.toString();
+    }
+
+    /**
+     * Native Gemini API Caller.
+     * Makes HTTPS call to Gemini from Android with zero CORS / origin issues.
+     */
+    @JavascriptInterface
+    public String callGeminiNative(String model, String apiKey, String payloadJson) {
+        String cleanKey = apiKey != null ? apiKey.trim().replace("\"", "").replace("'", "").replaceAll("\\s+", "") : "";
+        String[] fallbackModels = new String[]{
+            (model != null && !model.isEmpty()) ? model : "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash"
+        };
+        String lastResponse = "";
+        for (String m : fallbackModels) {
+            try {
+                URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent?key=" + cleanKey);
+                HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(15000);
+                conn.setDoOutput(true);
+
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(payloadJson.getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                }
+
+                int code = conn.getResponseCode();
+                InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
+                if (is != null) {
+                    BufferedReader r = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = r.readLine()) != null) sb.append(line);
+                    lastResponse = sb.toString();
+                    if (code == 200) {
+                        return lastResponse;
+                    }
+                    if (code == 400 || code == 403) {
+                        return lastResponse;
+                    }
+                }
+            } catch (Exception e) {
+                lastResponse = "{\"error\":{\"message\":\"" + (e.getMessage() != null ? e.getMessage().replace("\"", "'") : "Network error") + "\"}}";
+            }
+        }
+        return lastResponse.isEmpty() ? "{\"error\":{\"message\":\"No response from Gemini API\"}}" : lastResponse;
     }
 
     @JavascriptInterface

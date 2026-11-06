@@ -634,21 +634,30 @@ You are running as a native Android app on Piyush's mobile phone with full Super
         conversationHistory = conversationHistory.slice(-10);
       }
 
-      // Try gemini-2.5-flash or gemini-2.0-flash or gemini-1.5-flash
       const model = "gemini-2.5-flash";
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const payload = {
+        systemInstruction: systemInstruction,
+        contents: conversationHistory,
+        tools: geminiTools
+      };
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: systemInstruction,
-          contents: conversationHistory,
-          tools: geminiTools
-        })
-      });
+      let data = null;
+      // 1. Try Native Android Bridge first (direct Java HTTPS, 0 CORS origin issues)
+      if (typeof MobileBridge !== 'undefined' && typeof MobileBridge.callGeminiNative === 'function') {
+        data = MobileBridge.callGeminiNative(model, apiKey, payload);
+      }
 
-      const data = await res.json();
+      // 2. Fallback to standard fetch if in desktop browser dev mode
+      if (!data) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        data = await res.json();
+      }
+
       const elapsed = Date.now() - startTime;
       liveLatency.textContent = `${elapsed}ms`;
 
@@ -982,36 +991,57 @@ You are running as a native Android app on Piyush's mobile phone with full Super
       testResultBox.innerHTML = "<span>Connecting to Google Gemini API...</span>";
       testResultBox.classList.remove('hidden');
 
+      // Yield 60ms so browser paints the loading state
+      await new Promise(r => setTimeout(r, 60));
+
       const startTime = Date.now();
-      const testModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
       let verified = false;
       let usedModel = "";
       let errDetail = "";
+      let elapsed = 0;
 
-      for (const m of testModels) {
-        try {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: 'Respond with OK.' }] }]
-            })
-          });
-          const data = await res.json();
-          if (data.candidates && data.candidates.length > 0) {
+      // 1. Try Native Android Bridge first (direct HTTPS from Java, no WebView CORS blocks)
+      if (typeof MobileBridge !== 'undefined' && typeof MobileBridge.testGeminiApiKey === 'function') {
+        const nativeCheck = MobileBridge.testGeminiApiKey(key);
+        if (nativeCheck) {
+          elapsed = nativeCheck.latencyMs || (Date.now() - startTime);
+          if (nativeCheck.ok) {
             verified = true;
-            usedModel = m;
-            break;
-          } else if (data.error) {
-            errDetail = data.error.message || JSON.stringify(data.error);
+            usedModel = nativeCheck.model || "gemini-2.5-flash";
+          } else {
+            errDetail = nativeCheck.error || "Authentication failed";
           }
-        } catch (e) {
-          errDetail = e.message || String(e);
         }
       }
 
-      const elapsed = Date.now() - startTime;
+      // 2. Fallback to standard fetch if in desktop browser dev mode
+      if (!verified && !errDetail) {
+        const testModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+        for (const m of testModels) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: 'Respond with OK.' }] }]
+              })
+            });
+            const data = await res.json();
+            if (data.candidates && data.candidates.length > 0) {
+              verified = true;
+              usedModel = m;
+              break;
+            } else if (data.error) {
+              errDetail = data.error.message || JSON.stringify(data.error);
+            }
+          } catch (e) {
+            errDetail = e.message || String(e);
+          }
+        }
+        elapsed = Date.now() - startTime;
+      }
+
       if (testBtnSpinner) testBtnSpinner.classList.add('hidden');
       btnTestKey.disabled = false;
 

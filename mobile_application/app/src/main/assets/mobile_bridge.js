@@ -45,6 +45,30 @@ window.MobileBridge = {
     }
   },
 
+  testGeminiApiKey: function(apiKey) {
+    if (this.isAndroid() && typeof window.MyraaNative.testGeminiApiKey === 'function') {
+      try {
+        var resStr = window.MyraaNative.testGeminiApiKey(apiKey);
+        return JSON.parse(resStr);
+      } catch (e) {
+        return { ok: false, error: e.message };
+      }
+    }
+    return null;
+  },
+
+  callGeminiNative: function(model, apiKey, payload) {
+    if (this.isAndroid() && typeof window.MyraaNative.callGeminiNative === 'function') {
+      try {
+        var resStr = window.MyraaNative.callGeminiNative(model, apiKey, typeof payload === 'string' ? payload : JSON.stringify(payload));
+        return JSON.parse(resStr);
+      } catch (e) {
+        return { error: { message: e.message } };
+      }
+    }
+    return null;
+  },
+
   startFloatingBubble: function() {
     if (this.isAndroid()) {
       window.MyraaNative.startFloatingBubble();
