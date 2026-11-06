@@ -163,20 +163,54 @@
     <div id="modalSettings" class="modal-overlay hidden">
       <div class="modal-sheet">
         <div class="modal-header">
-          <h3>⚙️ Settings</h3>
+          <h3>⚙️ Settings & Voice Studio</h3>
           <button id="btnCloseSettings" class="close-sheet-btn">&times;</button>
         </div>
         <div class="modal-body">
           <label class="form-label">Google Gemini API Key:</label>
           <input type="password" id="inputApiKey" class="text-input" placeholder="AIzaSy..." />
-          <button id="btnSaveKey" class="primary-btn full-btn" style="margin-top: 8px;">Save Key</button>
+          <button id="btnSaveKey" class="primary-btn full-btn" style="margin-top: 8px;">Save Gemini Key</button>
 
-          <label class="form-label" style="margin-top: 16px;">AI Persona Voice:</label>
-          <select id="selectVoice" class="text-input">
-            <option value="Aoede">Aoede (Cute Anime / Sweet Companion)</option>
-            <option value="Kore">Kore (Gentle & Calm)</option>
-            <option value="Fenrir">Fenrir (Deep Voice)</option>
+          <hr style="border: 0; border-top: 1px solid var(--border-glass); margin: 20px 0 16px;" />
+
+          <h4 style="font-size: 0.95rem; margin-bottom: 12px; color: #c084fc;">🎙️ MYRAA Voice Engine &amp; Tuning</h4>
+
+          <label class="form-label">Voice Engine:</label>
+          <select id="selectVoiceEngine" class="text-input">
+            <option value="enhanced">Enhanced Sweet Companion (High Pitch Neural)</option>
+            <option value="elevenlabs">ElevenLabs Studio Voice (Ultra-Realistic)</option>
+            <option value="web_speech">Browser Neural Synthesis</option>
+            <option value="system_tts">Android System TTS</option>
           </select>
+
+          <!-- ElevenLabs Extra Options -->
+          <div id="elevenLabsConfig" style="margin-top: 12px; display: none;">
+            <label class="form-label">ElevenLabs API Key:</label>
+            <input type="password" id="inputElevenKey" class="text-input" placeholder="xi-api-key..." />
+            <label class="form-label" style="margin-top: 8px;">ElevenLabs Voice ID:</label>
+            <input type="text" id="inputElevenVoice" class="text-input" placeholder="e.g. 21m00Tcm4TlvDq8ikWAM" />
+            <button id="btnSaveEleven" class="primary-btn full-btn" style="margin-top: 8px;">Save ElevenLabs Key</button>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 14px;">
+            <div style="flex: 1;">
+              <label class="form-label" id="labelPitch">Voice Pitch: 1.25x</label>
+              <input type="range" id="rangePitch" min="0.8" max="1.6" step="0.05" value="1.25" style="width: 100%; margin-top: 6px;" />
+            </div>
+            <div style="flex: 1;">
+              <label class="form-label" id="labelSpeed">Voice Speed: 1.0x</label>
+              <input type="range" id="rangeSpeed" min="0.8" max="1.4" step="0.05" value="1.0" style="width: 100%; margin-top: 6px;" />
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 16px;">
+            <button id="btnTestVoice" class="primary-btn" style="flex: 1;">🔊 Test Voice</button>
+            <button id="btnOpenTtsSettings" class="header-pill-btn" style="flex: 1; justify-content: center;">⚙️ Phone TTS</button>
+          </div>
+
+          <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
+            💡 <strong>Pro Tip:</strong> Agar phone ka standard robot voice aaye to <strong>"Phone TTS"</strong> par click karke Google Speech Services ka Hindi/Indian English voice data download karein ya ElevenLabs API connect karein.
+          </p>
         </div>
       </div>
     </div>

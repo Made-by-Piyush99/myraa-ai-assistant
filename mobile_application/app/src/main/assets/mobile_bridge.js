@@ -181,27 +181,131 @@ window.MobileBridge = {
     }
   },
 
-  speak: function(text) {
+  speak: function(text, pitch, rate) {
+    var p = parseFloat(pitch || localStorage.getItem('MYRAA_VOICE_PITCH') || '1.25');
+    var s = parseFloat(rate || localStorage.getItem('MYRAA_VOICE_SPEED') || '1.0');
+    var engine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'enhanced';
+
+    // 1. ElevenLabs Studio AI Voice
+    var elevenKey = localStorage.getItem('MYRAA_ELEVEN_KEY');
+    var elevenVoice = localStorage.getItem('MYRAA_ELEVEN_VOICE') || '21m00Tcm4TlvDq8ikWAM';
+    if (engine === 'elevenlabs' && elevenKey && elevenKey.trim().length > 10) {
+      this.speakElevenLabs(text, elevenKey.trim(), elevenVoice.trim());
+      return;
+    }
+
+    // 2. Enhanced Sweet Companion: Uses Web Speech Synthesis if browser has neural voice, else Android native
+    if (engine === 'web_speech' && 'speechSynthesis' in window) {
+      this.speakWebSpeech(text, p, s);
+      return;
+    }
+
+    // 3. Android Native TTS
     if (this.isAndroid() && typeof window.MyraaNative.speak === 'function') {
       try {
+        if (typeof window.MyraaNative.setVoiceSettings === 'function') {
+          window.MyraaNative.setVoiceSettings(p, s);
+        }
         window.MyraaNative.speak(text);
         return;
       } catch (e) {
         console.warn('Native TTS error:', e);
       }
     }
-    if ('speechSynthesis' in window) {
+
+    // Fallback
+    this.speakWebSpeech(text, p, s);
+  },
+
+  speakWebSpeech: function(text, pitch, rate) {
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.pitch = pitch || 1.25;
+      u.rate = rate || 1.0;
+      u.lang = 'hi-IN';
+
+      var voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        var chosen = null;
+        for (var i = 0; i < voices.length; i++) {
+          var v = voices[i];
+          var name = (v.name || '').toLowerCase();
+          var lang = (v.lang || '').toLowerCase();
+          if ((lang.includes('hi') || lang.includes('in') || lang.includes('en')) &&
+              (name.includes('female') || name.includes('girl') || name.includes('natural') || name.includes('google') || name.includes('zira'))) {
+            chosen = v;
+            break;
+          }
+        }
+        if (chosen) u.voice = chosen;
+      }
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      console.warn('WebSpeech error:', e);
+    }
+  },
+
+  speakElevenLabs: async function(text, apiKey, voiceId) {
+    try {
+      if (window.myraaCurrentAudio) {
+        try { window.myraaCurrentAudio.pause(); } catch (e) {}
+        window.myraaCurrentAudio = null;
+      }
+      var res = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voiceId, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: text,
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.8
+          }
+        })
+      });
+      if (res.ok) {
+        var blob = await res.blob();
+        var url = URL.createObjectURL(blob);
+        var audio = new Audio(url);
+        window.myraaCurrentAudio = audio;
+        audio.play().catch(function() {});
+        return;
+      }
+    } catch (e) {
+      console.warn('ElevenLabs API notice:', e);
+    }
+    // Fallback to local
+    this.speakWebSpeech(text, 1.25, 1.0);
+  },
+
+  setVoiceSettings: function(pitch, rate) {
+    if (this.isAndroid() && typeof window.MyraaNative.setVoiceSettings === 'function') {
       try {
-        window.speechSynthesis.cancel();
-        var u = new SpeechSynthesisUtterance(text);
-        u.lang = 'hi-IN';
-        u.rate = 1.0;
-        window.speechSynthesis.speak(u);
+        window.MyraaNative.setVoiceSettings(pitch, rate);
       } catch (e) {}
     }
   },
 
+  openTtsSettings: function() {
+    if (this.isAndroid() && typeof window.MyraaNative.openTtsSettings === 'function') {
+      try {
+        window.MyraaNative.openTtsSettings();
+        return;
+      } catch (e) {}
+    }
+    alert("Please open your phone Settings > Accessibility / System > Text-to-Speech.");
+  },
+
   stopSpeaking: function() {
+    if (window.myraaCurrentAudio) {
+      try { window.myraaCurrentAudio.pause(); } catch (e) {}
+      window.myraaCurrentAudio = null;
+    }
     if (this.isAndroid() && typeof window.MyraaNative.stopSpeaking === 'function') {
       try {
         window.MyraaNative.stopSpeaking();

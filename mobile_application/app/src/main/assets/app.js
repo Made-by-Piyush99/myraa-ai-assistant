@@ -669,10 +669,46 @@ You are running as a native Android app on Piyush's mobile phone with full Super
     }
   });
 
-  // Settings Modal
+  // Settings Modal Elements
+  const selectVoiceEngine = document.getElementById('selectVoiceEngine');
+  const elevenLabsConfig = document.getElementById('elevenLabsConfig');
+  const inputElevenKey = document.getElementById('inputElevenKey');
+  const inputElevenVoice = document.getElementById('inputElevenVoice');
+  const btnSaveEleven = document.getElementById('btnSaveEleven');
+  const rangePitch = document.getElementById('rangePitch');
+  const rangeSpeed = document.getElementById('rangeSpeed');
+  const labelPitch = document.getElementById('labelPitch');
+  const labelSpeed = document.getElementById('labelSpeed');
+  const btnTestVoice = document.getElementById('btnTestVoice');
+  const btnOpenTtsSettings = document.getElementById('btnOpenTtsSettings');
+
+  // Load Saved Voice Preferences
+  function loadVoiceSettings() {
+    const savedEngine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'enhanced';
+    if (selectVoiceEngine) {
+      selectVoiceEngine.value = savedEngine;
+      if (elevenLabsConfig) {
+        elevenLabsConfig.style.display = savedEngine === 'elevenlabs' ? 'block' : 'none';
+      }
+    }
+    const savedPitch = localStorage.getItem('MYRAA_VOICE_PITCH') || '1.25';
+    const savedSpeed = localStorage.getItem('MYRAA_VOICE_SPEED') || '1.0';
+    if (rangePitch) rangePitch.value = savedPitch;
+    if (labelPitch) labelPitch.textContent = `Voice Pitch: ${savedPitch}x`;
+    if (rangeSpeed) rangeSpeed.value = savedSpeed;
+    if (labelSpeed) labelSpeed.textContent = `Voice Speed: ${savedSpeed}x`;
+    if (inputElevenKey) inputElevenKey.value = localStorage.getItem('MYRAA_ELEVEN_KEY') || '';
+    if (inputElevenVoice) inputElevenVoice.value = localStorage.getItem('MYRAA_ELEVEN_VOICE') || '21m00Tcm4TlvDq8ikWAM';
+
+    MobileBridge.setVoiceSettings(parseFloat(savedPitch), parseFloat(savedSpeed));
+  }
+  loadVoiceSettings();
+
+  // Settings Modal Open
   btnSettings.addEventListener('click', () => {
     modalSettings.classList.remove('hidden');
     inputApiKey.value = localStorage.getItem('MYRAA_API_KEY') || '';
+    loadVoiceSettings();
   });
   btnCloseSettings.addEventListener('click', () => {
     modalSettings.classList.add('hidden');
@@ -680,9 +716,61 @@ You are running as a native Android app on Piyush's mobile phone with full Super
   btnSaveKey.addEventListener('click', () => {
     const val = inputApiKey.value.trim().replace(/^["']|["']$/g, '');
     localStorage.setItem('MYRAA_API_KEY', val);
-    modalSettings.classList.add('hidden');
-    speakAndDisplay("API Key save ho gaya hai Piyu! Ab aap mujhse koi bhi sawal pooch sakte hain aur command de sakte hain.");
+    speakAndDisplay("Gemini API Key save ho gaya hai Piyu!");
   });
+
+  // Voice Engine Toggle
+  if (selectVoiceEngine) {
+    selectVoiceEngine.addEventListener('change', () => {
+      const val = selectVoiceEngine.value;
+      localStorage.setItem('MYRAA_VOICE_ENGINE', val);
+      if (elevenLabsConfig) {
+        elevenLabsConfig.style.display = val === 'elevenlabs' ? 'block' : 'none';
+      }
+    });
+  }
+
+  // ElevenLabs Save
+  if (btnSaveEleven) {
+    btnSaveEleven.addEventListener('click', () => {
+      const k = inputElevenKey.value.trim();
+      const v = inputElevenVoice.value.trim() || '21m00Tcm4TlvDq8ikWAM';
+      localStorage.setItem('MYRAA_ELEVEN_KEY', k);
+      localStorage.setItem('MYRAA_ELEVEN_VOICE', v);
+      speakAndDisplay("ElevenLabs Studio voice credentials save ho gaye!");
+    });
+  }
+
+  // Pitch & Speed Sliders
+  if (rangePitch) {
+    rangePitch.addEventListener('input', () => {
+      labelPitch.textContent = `Voice Pitch: ${rangePitch.value}x`;
+      localStorage.setItem('MYRAA_VOICE_PITCH', rangePitch.value);
+      MobileBridge.setVoiceSettings(parseFloat(rangePitch.value), parseFloat(rangeSpeed.value));
+    });
+  }
+
+  if (rangeSpeed) {
+    rangeSpeed.addEventListener('input', () => {
+      labelSpeed.textContent = `Voice Speed: ${rangeSpeed.value}x`;
+      localStorage.setItem('MYRAA_VOICE_SPEED', rangeSpeed.value);
+      MobileBridge.setVoiceSettings(parseFloat(rangePitch.value), parseFloat(rangeSpeed.value));
+    });
+  }
+
+  // Test Voice Button
+  if (btnTestVoice) {
+    btnTestVoice.addEventListener('click', () => {
+      speakAndDisplay("Namaste Piyu! Main aapki personal AI assistant MYRAA hoon. Kya ab meri aawaz aapko theek lag rahi hai?");
+    });
+  }
+
+  // Open Android TTS Settings Button
+  if (btnOpenTtsSettings) {
+    btnOpenTtsSettings.addEventListener('click', () => {
+      MobileBridge.openTtsSettings();
+    });
+  }
 
   // Memories Modal
   btnOpenMemories.addEventListener('click', () => {

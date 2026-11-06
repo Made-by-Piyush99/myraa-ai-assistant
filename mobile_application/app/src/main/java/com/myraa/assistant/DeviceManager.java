@@ -18,14 +18,18 @@ import android.provider.Settings;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
 import java.util.Locale;
 import java.util.List;
+import java.util.Set;
 
 public class DeviceManager {
 
     private final Context context;
     private TextToSpeech tts;
     private boolean isTtsReady = false;
+    private float currentPitch = 1.22f;
+    private float currentSpeed = 1.02f;
 
     public DeviceManager(Context context) {
         this.context = context.getApplicationContext();
@@ -36,12 +40,7 @@ public class DeviceManager {
         try {
             tts = new TextToSpeech(context, status -> {
                 if (status == TextToSpeech.SUCCESS) {
-                    int res = tts.setLanguage(new Locale("hi", "IN"));
-                    if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        tts.setLanguage(Locale.US);
-                    }
-                    tts.setPitch(1.05f);
-                    tts.setSpeechRate(1.02f);
+                    configureBestVoice();
                     isTtsReady = true;
                 }
             });
@@ -50,11 +49,80 @@ public class DeviceManager {
         }
     }
 
+    private void configureBestVoice() {
+        if (tts == null) return;
+        try {
+            // First try Hindi (India)
+            int res = tts.setLanguage(new Locale("hi", "IN"));
+            if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
+                tts.setLanguage(Locale.US);
+            }
+
+            // Find best high-quality / neural / female voice
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                Set<Voice> voices = tts.getVoices();
+                if (voices != null && !voices.isEmpty()) {
+                    Voice selectedVoice = null;
+                    // Prefer neural female Hindi/Indian voice
+                    for (Voice v : voices) {
+                        String name = v.getName().toLowerCase();
+                        Locale loc = v.getLocale();
+                        if (loc != null && (loc.getLanguage().equals("hi") || loc.getLanguage().equals("en"))) {
+                            if (name.contains("female") || name.contains("hie") || name.contains("cfl") || name.contains("network") || name.contains("neural")) {
+                                selectedVoice = v;
+                                if (name.contains("hi") && (name.contains("network") || name.contains("hie"))) {
+                                    break; // top pick
+                                }
+                            }
+                        }
+                    }
+                    if (selectedVoice != null) {
+                        tts.setVoice(selectedVoice);
+                    }
+                }
+            }
+
+            tts.setPitch(currentPitch);
+            tts.setSpeechRate(currentSpeed);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void setVoiceSettings(float pitch, float rate) {
+        this.currentPitch = pitch > 0 ? pitch : 1.22f;
+        this.currentSpeed = rate > 0 ? rate : 1.02f;
+        if (tts != null) {
+            try {
+                tts.setPitch(this.currentPitch);
+                tts.setSpeechRate(this.currentSpeed);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void openTtsSettings() {
+        try {
+            Intent intent = new Intent("com.android.settings.TTS_SETTINGS");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            try {
+                Intent fallback = new Intent(Settings.ACTION_SETTINGS);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(fallback);
+            } catch (Exception ignored) {}
+        }
+    }
+
     public void speak(String text) {
         if (text == null || text.trim().isEmpty()) return;
         if (tts == null) initTTS();
         try {
             if (tts != null) {
+                tts.setPitch(currentPitch);
+                tts.setSpeechRate(currentSpeed);
                 tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "myraa_speech_" + System.currentTimeMillis());
             }
         } catch (Exception e) {

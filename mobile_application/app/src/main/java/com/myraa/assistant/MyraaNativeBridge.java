@@ -155,6 +155,16 @@ public class MyraaNativeBridge {
     }
 
     @JavascriptInterface
+    public void setVoiceSettings(float pitch, float rate) {
+        deviceManager.setVoiceSettings(pitch, rate);
+    }
+
+    @JavascriptInterface
+    public void openTtsSettings() {
+        deviceManager.openTtsSettings();
+    }
+
+    @JavascriptInterface
     public void startFloatingBubble() {
         if (isOverlayActive()) {
             Intent intent = new Intent(context, MyraaOverlayService.class);
