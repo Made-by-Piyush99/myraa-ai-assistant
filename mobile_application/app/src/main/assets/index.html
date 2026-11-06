@@ -19,6 +19,11 @@
         <span class="brand-badge">SUPER MOBILE</span>
       </div>
       <div class="header-actions">
+        <!-- Local Server Port 3002 Status -->
+        <button id="btnServerStatus" class="header-pill-btn pill-success" title="Local Autonomous Server on Port 3002">
+          <span>🌐 :3002</span>
+        </button>
+
         <!-- Accessibility Super Access Status -->
         <button id="btnAccessibility" class="header-pill-btn pill-warning" title="Android Accessibility Super Access">
           <span id="accessIcon">⚠️</span>
@@ -111,6 +116,8 @@
       <button class="pill-action" data-tool="mobile_location">📍 GPS</button>
       <button class="pill-action" data-tool="mobile_battery">🔋 Battery</button>
       <button class="pill-action" data-tool="mobile_read">📄 Read Screen</button>
+      <button class="pill-action" data-tool="mobile_screenshot">📸 Screenshot</button>
+      <button class="pill-action" data-tool="mobile_lock">🔒 Lock Screen</button>
     </section>
 
     <!-- Text Command & Question Input -->
@@ -154,6 +161,40 @@
               <p>Kisi bhi app ke upar floating assistant bubble show karne ke liye.</p>
             </div>
             <button id="btnGrantOverlay" class="primary-btn">Enable</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Local Server 3002 Modal -->
+    <div id="modalServer" class="modal-overlay hidden">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3>🌐 Local Server (Port 3002)</h3>
+          <button id="btnCloseServer" class="close-sheet-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">MYRAA app automatically starts a high-speed local HTTP &amp; REST Server on port 3002 directly inside your phone. You can access it on this device or from your PC on the same Wi-Fi network!</p>
+          <div class="perm-card">
+            <div class="perm-info">
+              <h4>Localhost URL (Phone Browser)</h4>
+              <p id="serverLocalUrl" style="color:#38bdf8; font-family:'JetBrains Mono',monospace;">http://localhost:3002</p>
+            </div>
+            <button class="primary-btn" id="btnCopyLocalUrl">Copy</button>
+          </div>
+          <div class="perm-card">
+            <div class="perm-info">
+              <h4>Wi-Fi Network URL (For PC &amp; Others)</h4>
+              <p id="serverWifiUrl" style="color:#c084fc; font-family:'JetBrains Mono',monospace;">http://127.0.0.1:3002</p>
+            </div>
+            <button class="primary-btn" id="btnCopyWifiUrl">Copy</button>
+          </div>
+          <div style="margin-top: 14px; background:rgba(255,255,255,0.04); padding:10px; border-radius:10px;">
+            <p style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.5;">
+              ⚡ <strong>Active Jarvis Endpoints:</strong><br>
+              <code>GET /api/health</code> | <code>GET /api/screen</code> | <code>POST /api/command</code><br>
+              <code>POST /api/tap</code> | <code>POST /api/swipe</code> | <code>POST /api/speak</code> | <code>POST /api/open-app</code>
+            </p>
           </div>
         </div>
       </div>

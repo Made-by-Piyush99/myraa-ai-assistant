@@ -389,6 +389,60 @@
       return true;
     }
 
+    // Screenshot
+    if (q.includes('screenshot') || q.includes('photo khicho') || q.includes('capture screen')) {
+      speakAndDisplay("Screenshot capture kar liya!");
+      setTimeout(() => MobileBridge.takeScreenshot(), 400);
+      return true;
+    }
+
+    // Lock Screen
+    if (q.includes('lock screen') || q.includes('phone lock') || q.includes('screen lock')) {
+      speakAndDisplay("Phone lock kar rahi hoon!");
+      setTimeout(() => MobileBridge.lockScreen(), 400);
+      return true;
+    }
+
+    // Read Screen
+    if (q.includes('screen padho') || q.includes('read screen') || q.includes('screen par kya hai') || q.includes('kya likha hai')) {
+      speakAndDisplay("Screen scan kar rahi hoon...");
+      setTimeout(() => {
+        const txt = MobileBridge.dumpScreenText();
+        const shortTxt = txt ? txt.replace(/\s+/g, ' ').substring(0, 120) : "Screen empty hai.";
+        speakAndDisplay(`Screen par ye likha hai: ${shortTxt}`);
+      }, 700);
+      return true;
+    }
+
+    // Server Info
+    if (q.includes('server') || q.includes('port 3002') || q.includes('local server')) {
+      const s = MobileBridge.getServerInfo();
+      speakAndDisplay(`Port 3002 par local server active hai! IP address ${s.ip} hai.`);
+      const modalServer = document.getElementById('modalServer');
+      if (modalServer) modalServer.classList.remove('hidden');
+      return true;
+    }
+
+    // Click by Text (e.g. "click search", "click subscribe", "click next")
+    if (q.startsWith('click ') || q.startsWith('tap ') || q.includes('par click karo')) {
+      let target = q.replace(/^click\s+|^tap\s+/i, '').replace(/par click karo/i, '').trim();
+      if (target) {
+        speakAndDisplay(`${target} par click kar rahi hoon!`);
+        MobileBridge.clickByText(target);
+        return true;
+      }
+    }
+
+    // Type text (e.g. "type hello", "likho hello")
+    if (q.startsWith('type ') || q.startsWith('likho ')) {
+      let textToType = q.replace(/^type\s+|^likho\s+/i, '').trim();
+      if (textToType) {
+        speakAndDisplay(`${textToType} type kar rahi hoon!`);
+        MobileBridge.typeText(textToType);
+        return true;
+      }
+    }
+
     // Greeting
     if (q.includes('hello') || q.includes('namaste') || q.includes('kaise ho') || q.includes('kaisi ho') || q.includes('hi myraa')) {
       speakAndDisplay("Namaste Piyu! Main badhiya hoon. Aapke poore phone ke super controls mere pass hain, batayiye kya karoon?");
@@ -637,6 +691,16 @@ You are running as a native Android app on Piyush's mobile phone with full Super
             speakAndDisplay(`Screen content scanned:\n${screenText.substring(0, 100)}`);
           }, 800);
           break;
+
+        case 'mobile_screenshot':
+          speakAndDisplay("Screenshot capture kar liya!");
+          setTimeout(() => MobileBridge.takeScreenshot(), 400);
+          break;
+
+        case 'mobile_lock':
+          speakAndDisplay("Screen lock kar rahi hoon!");
+          setTimeout(() => MobileBridge.lockScreen(), 400);
+          break;
       }
     });
   });
@@ -668,6 +732,58 @@ You are running as a native Android app on Piyush's mobile phone with full Super
       btnOverlayToggle.classList.remove('pill-success');
     }
   });
+
+  // Local Server 3002 Modal & Status
+  const btnServerStatus = document.getElementById('btnServerStatus');
+  const modalServer = document.getElementById('modalServer');
+  const btnCloseServer = document.getElementById('btnCloseServer');
+  const serverLocalUrl = document.getElementById('serverLocalUrl');
+  const serverWifiUrl = document.getElementById('serverWifiUrl');
+  const btnCopyLocalUrl = document.getElementById('btnCopyLocalUrl');
+  const btnCopyWifiUrl = document.getElementById('btnCopyWifiUrl');
+
+  function updateServerDisplay() {
+    const s = MobileBridge.getServerInfo();
+    if (s && s.running) {
+      if (serverLocalUrl) serverLocalUrl.textContent = s.localUrl;
+      if (serverWifiUrl) serverWifiUrl.textContent = s.wifiUrl;
+      if (btnServerStatus) {
+        btnServerStatus.classList.remove('pill-warning');
+        btnServerStatus.classList.add('pill-success');
+      }
+    } else {
+      if (btnServerStatus) {
+        btnServerStatus.classList.remove('pill-success');
+        btnServerStatus.classList.add('pill-warning');
+      }
+    }
+  }
+  setInterval(updateServerDisplay, 4000);
+  updateServerDisplay();
+
+  if (btnServerStatus && modalServer) {
+    btnServerStatus.addEventListener('click', () => {
+      updateServerDisplay();
+      modalServer.classList.remove('hidden');
+    });
+  }
+  if (btnCloseServer && modalServer) {
+    btnCloseServer.addEventListener('click', () => {
+      modalServer.classList.add('hidden');
+    });
+  }
+  if (btnCopyLocalUrl && serverLocalUrl) {
+    btnCopyLocalUrl.addEventListener('click', () => {
+      navigator.clipboard.writeText(serverLocalUrl.textContent);
+      alert("Localhost URL copied: " + serverLocalUrl.textContent);
+    });
+  }
+  if (btnCopyWifiUrl && serverWifiUrl) {
+    btnCopyWifiUrl.addEventListener('click', () => {
+      navigator.clipboard.writeText(serverWifiUrl.textContent);
+      alert("Wi-Fi URL copied: " + serverWifiUrl.textContent);
+    });
+  }
 
   // Settings Modal Elements
   const selectVoiceEngine = document.getElementById('selectVoiceEngine');

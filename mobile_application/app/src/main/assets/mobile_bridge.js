@@ -122,6 +122,31 @@ window.MobileBridge = {
     return true;
   },
 
+  takeScreenshot: function() {
+    if (this.isAndroid() && typeof window.MyraaNative.takeScreenshot === 'function') {
+      return window.MyraaNative.takeScreenshot();
+    }
+    console.log('[Dev Mock] Take Screenshot');
+    return true;
+  },
+
+  lockScreen: function() {
+    if (this.isAndroid() && typeof window.MyraaNative.lockScreen === 'function') {
+      return window.MyraaNative.lockScreen();
+    }
+    console.log('[Dev Mock] Lock Screen');
+    return true;
+  },
+
+  getServerInfo: function() {
+    if (this.isAndroid() && typeof window.MyraaNative.getServerInfo === 'function') {
+      try {
+        return JSON.parse(window.MyraaNative.getServerInfo());
+      } catch (e) {}
+    }
+    return { running: true, port: 3002, ip: "127.0.0.1", localUrl: "http://localhost:3002", wifiUrl: "http://127.0.0.1:3002" };
+  },
+
   dumpScreenText: function() {
     if (this.isAndroid()) {
       return window.MyraaNative.dumpScreenText();

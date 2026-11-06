@@ -27,6 +27,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Autonomous Embedded REST Server: Automatically starts on Port 3002
+        MyraaLocalServer.startServer(this, MyraaLocalServer.DEFAULT_PORT);
+
         webView = findViewById(R.id.webView);
         setupWebView();
         checkAndRequestPermissions();

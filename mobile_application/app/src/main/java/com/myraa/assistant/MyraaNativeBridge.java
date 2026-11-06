@@ -89,6 +89,46 @@ public class MyraaNativeBridge {
     }
 
     @JavascriptInterface
+    public boolean lockScreen() {
+        MyraaAccessibilityService service = MyraaAccessibilityService.getInstance();
+        if (service != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return service.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN);
+        }
+        return false;
+    }
+
+    @JavascriptInterface
+    public boolean showPowerDialog() {
+        MyraaAccessibilityService service = MyraaAccessibilityService.getInstance();
+        if (service != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            return service.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG);
+        }
+        return false;
+    }
+
+    @JavascriptInterface
+    public boolean toggleSplitScreen() {
+        MyraaAccessibilityService service = MyraaAccessibilityService.getInstance();
+        if (service != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            return service.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
+        }
+        return false;
+    }
+
+    @JavascriptInterface
+    public String getServerInfo() {
+        JSONObject obj = new JSONObject();
+        try {
+            obj.put("running", MyraaLocalServer.isServerRunning());
+            obj.put("port", MyraaLocalServer.DEFAULT_PORT);
+            obj.put("ip", MyraaLocalServer.getLocalIpAddress());
+            obj.put("localUrl", "http://localhost:" + MyraaLocalServer.DEFAULT_PORT);
+            obj.put("wifiUrl", "http://" + MyraaLocalServer.getLocalIpAddress() + ":" + MyraaLocalServer.DEFAULT_PORT);
+        } catch (Exception ignored) {}
+        return obj.toString();
+    }
+
+    @JavascriptInterface
     public boolean typeText(String text) {
         MyraaAccessibilityService service = MyraaAccessibilityService.getInstance();
         return service != null && service.typeText(text);
@@ -283,6 +323,24 @@ public class MyraaNativeBridge {
                 case "mobileBattery":
                     res.put("success", true);
                     res.put("battery", new JSONObject(getBattery()));
+                    break;
+
+                case "mobileScreenshot":
+                    boolean scOk = takeScreenshot();
+                    res.put("success", scOk);
+                    res.put("result", scOk ? "Screenshot captured" : "Screenshot failed (requires Android 9+)");
+                    break;
+
+                case "mobileLockScreen":
+                    boolean lkOk = lockScreen();
+                    res.put("success", lkOk);
+                    res.put("result", lkOk ? "Screen locked" : "Lock screen action failed");
+                    break;
+
+                case "mobilePowerMenu":
+                    boolean pwOk = showPowerDialog();
+                    res.put("success", pwOk);
+                    res.put("result", pwOk ? "Power menu displayed" : "Power dialog action failed");
                     break;
 
                 case "mobileVibrate":
