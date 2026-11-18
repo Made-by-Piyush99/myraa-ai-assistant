@@ -137,13 +137,13 @@
       if (accessOk) {
         btnAccessibility.classList.remove('pill-warning');
         btnAccessibility.classList.add('pill-success');
-        accessIcon.textContent = '♿';
+        accessIcon.textContent = '⚡';
         accessLabel.textContent = 'Access ON';
       } else {
         btnAccessibility.classList.remove('pill-success');
         btnAccessibility.classList.add('pill-warning');
         accessIcon.textContent = '⚠️';
-        accessLabel.textContent = 'Enable Access';
+        accessLabel.textContent = 'Access';
       }
     }
   }
@@ -634,7 +634,7 @@ You are running as a native Android app on Piyush's mobile phone with full Super
         conversationHistory = conversationHistory.slice(-10);
       }
 
-      const model = "gemini-2.5-flash";
+      const model = "gemini-1.5-flash";
       const payload = {
         systemInstruction: systemInstruction,
         contents: conversationHistory,
@@ -1007,7 +1007,7 @@ You are running as a native Android app on Piyush's mobile phone with full Super
           elapsed = nativeCheck.latencyMs || (Date.now() - startTime);
           if (nativeCheck.ok) {
             verified = true;
-            usedModel = nativeCheck.model || "gemini-2.5-flash";
+            usedModel = nativeCheck.model || "gemini-1.5-flash";
           } else {
             errDetail = nativeCheck.error || "Authentication failed";
           }
@@ -1016,7 +1016,7 @@ You are running as a native Android app on Piyush's mobile phone with full Super
 
       // 2. Fallback to standard fetch if in desktop browser dev mode
       if (!verified && !errDetail) {
-        const testModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+        const testModels = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
         for (const m of testModels) {
           try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`;

@@ -28,6 +28,11 @@ public class MyraaNativeBridge {
      * Native Gemini API Key Tester.
      * Direct HTTPS request from Android Java with 0 CORS restrictions.
      */
+    /**
+     * Native Gemini API Key Tester.
+     * Uses Google's official models catalog API to authenticate keys instantly
+     * with ZERO "high demand" 503 inference errors, plus multi-model generation check.
+     */
     @JavascriptInterface
     public String testGeminiApiKey(String apiKey) {
         JSONObject res = new JSONObject();
@@ -40,10 +45,64 @@ public class MyraaNativeBridge {
         }
 
         String cleanKey = apiKey.trim().replace("\"", "").replace("'", "").replaceAll("\\s+", "");
-        String[] testModels = new String[]{"gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"};
-
         long startTime = System.currentTimeMillis();
-        String lastError = "";
+
+        // 1. Verify key directly with Google's Models catalog API (Instant auth, zero inference queueing)
+        boolean catalogAuthOk = false;
+        String detectedModel = "gemini-1.5-flash";
+        String catalogError = "";
+
+        try {
+            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/models?key=" + cleanKey);
+            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                catalogAuthOk = true;
+                InputStream is = conn.getInputStream();
+                BufferedReader r = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                String body = sb.toString();
+                if (body.contains("models/gemini-1.5-flash")) {
+                    detectedModel = "gemini-1.5-flash";
+                } else if (body.contains("models/gemini-2.0-flash")) {
+                    detectedModel = "gemini-2.0-flash";
+                } else if (body.contains("models/gemini-pro")) {
+                    detectedModel = "gemini-pro";
+                }
+            } else if (code == 400 || code == 403) {
+                InputStream es = conn.getErrorStream();
+                if (es != null) {
+                    BufferedReader r = new BufferedReader(new InputStreamReader(es, StandardCharsets.UTF_8));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = r.readLine()) != null) sb.append(line);
+                    catalogError = sb.toString();
+                }
+                res.put("ok", false);
+                res.put("code", code);
+                String msg = "Google AI Studio API Key invalid hai. Kripya sahi key paste karein.";
+                try {
+                    JSONObject errJson = new JSONObject(catalogError);
+                    if (errJson.has("error") && errJson.getJSONObject("error").has("message")) {
+                        msg = errJson.getJSONObject("error").getString("message");
+                    }
+                } catch (Exception ignored) {}
+                res.put("error", msg);
+                return res.toString();
+            }
+        } catch (Exception e) {
+            catalogError = e.getMessage() != null ? e.getMessage() : e.toString();
+        }
+
+        // 2. Generation verification using stable production models (gemini-1.5-flash, gemini-2.0-flash, gemini-1.5-pro)
+        String[] testModels = new String[]{detectedModel, "gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro"};
+        String lastError = catalogError;
         int lastCode = 0;
 
         for (String model : testModels) {
@@ -56,7 +115,7 @@ public class MyraaNativeBridge {
                 conn.setReadTimeout(8000);
                 conn.setDoOutput(true);
 
-                String payload = "{\"contents\":[{\"role\":\"user\",\"parts\":[{\"text\":\"ping\"}]}]}";
+                String payload = "{\"contents\":[{\"parts\":[{\"text\":\"ping\"}]}]}";
                 try (OutputStream os = conn.getOutputStream()) {
                     os.write(payload.getBytes(StandardCharsets.UTF_8));
                     os.flush();
@@ -83,10 +142,22 @@ public class MyraaNativeBridge {
                     if (code == 400 || code == 403) {
                         break;
                     }
+                    // 503 or 404 or 429 continues to next model
                 }
             } catch (Exception e) {
                 lastError = e.getMessage() != null ? e.getMessage() : e.toString();
             }
+        }
+
+        // If Google's models catalog verified the key but generateContent hit a temporary demand spike, the key IS valid!
+        if (catalogAuthOk) {
+            long elapsed = System.currentTimeMillis() - startTime;
+            try {
+                res.put("ok", true);
+                res.put("model", detectedModel);
+                res.put("latencyMs", elapsed);
+                return res.toString();
+            } catch (Exception ignored) {}
         }
 
         try {
@@ -106,15 +177,19 @@ public class MyraaNativeBridge {
 
     /**
      * Native Gemini API Caller.
-     * Makes HTTPS call to Gemini from Android with zero CORS / origin issues.
+     * Makes HTTPS call to Gemini from Android with zero CORS / origin issues,
+     * with multi-model automatic fallback (gemini-1.5-flash -> gemini-2.0-flash -> gemini-1.5-pro).
      */
     @JavascriptInterface
     public String callGeminiNative(String model, String apiKey, String payloadJson) {
         String cleanKey = apiKey != null ? apiKey.trim().replace("\"", "").replace("'", "").replaceAll("\\s+", "") : "";
+        String primaryModel = (model != null && !model.isEmpty() && !model.contains("2.5")) ? model : "gemini-1.5-flash";
         String[] fallbackModels = new String[]{
-            (model != null && !model.isEmpty()) ? model : "gemini-2.5-flash",
+            primaryModel,
+            "gemini-1.5-flash",
             "gemini-2.0-flash",
-            "gemini-1.5-flash"
+            "gemini-1.5-pro",
+            "gemini-pro"
         };
         String lastResponse = "";
         for (String m : fallbackModels) {
@@ -146,6 +221,7 @@ public class MyraaNativeBridge {
                     if (code == 400 || code == 403) {
                         return lastResponse;
                     }
+                    // 503, 429, 404 -> automatically try next fallback model
                 }
             } catch (Exception e) {
                 lastResponse = "{\"error\":{\"message\":\"" + (e.getMessage() != null ? e.getMessage().replace("\"", "'") : "Network error") + "\"}}";
