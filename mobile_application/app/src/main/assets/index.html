@@ -19,6 +19,11 @@
       </div>
 
       <div class="header-scroll-tray">
+        <!-- Kokoro-82M Quick Voice Chip -->
+        <button id="btnQuickVoice" class="header-pill-btn pill-kokoro" title="Kokoro-82M Voice Selector">
+          <span>🌸 <span id="headerVoiceName">af_bella</span></span>
+        </button>
+
         <!-- Local Server Port 3002 Status -->
         <button id="btnServerStatus" class="header-pill-btn pill-success" title="Local Autonomous Server on Port 3002">
           <span>🌐 :3002</span>
@@ -44,7 +49,7 @@
 
       <div class="header-fixed-right">
         <!-- Settings (ALWAYS Pinned & Prominently Visible on Mobile Screen) -->
-        <button id="btnSettings" class="icon-btn pinned-settings" title="Settings & API Key">
+        <button id="btnSettings" class="icon-btn pinned-settings" title="Settings & Voice Studio">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
       </div>
@@ -101,11 +106,19 @@
     <!-- Live Subtitle / Thought Card -->
     <section class="subtitle-card" id="subtitleCard">
       <div class="subtitle-header">
-        <span class="subtitle-tag">MYRAA</span>
-        <span id="liveLatency" class="subtitle-latency">Ready</span>
+        <div class="subtitle-tag-group">
+          <span class="subtitle-tag">MYRAA</span>
+          <span class="subtitle-voice-chip">🌸 Kokoro-82M</span>
+        </div>
+        <div class="subtitle-actions">
+          <span id="liveLatency" class="subtitle-latency">Ready</span>
+          <button id="btnReplayVoice" class="replay-voice-btn" title="Replay with Kokoro Voice">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          </button>
+        </div>
       </div>
       <p id="subtitleText" class="subtitle-content">
-        "Namaste Piyu! Main aapke poore phone ko voice se operate kar sakti hoon. Kahiye kya karna hai?"
+        "Namaste Piyu! Main aapke poore phone ko Kokoro-82M cute voice se operate karne ke liye ready hoon. Kahiye kya karna hai?"
       </p>
     </section>
 
@@ -223,16 +236,77 @@
 
           <hr style="border: 0; border-top: 1px solid var(--border-glass); margin: 20px 0 16px;" />
 
-          <h4 style="font-size: 0.95rem; margin-bottom: 12px; color: #c084fc;">🎙️ MYRAA Voice Engine &amp; Tuning</h4>
+          <div class="section-title-row">
+            <h4 style="font-size: 0.98rem; color: #c084fc; display: flex; align-items: center; gap: 6px;">
+              <span>🌸</span>
+              <span>Kokoro-82M Companion Voice Studio</span>
+            </h4>
+            <span class="badge-kokoro-model">82M Offline</span>
+          </div>
 
-          <label class="form-label">Voice Engine:</label>
+          <label class="form-label" style="margin-top: 10px;">Active Voice Engine:</label>
           <select id="selectVoiceEngine" class="text-input">
-            <option value="aoede" selected>🌸 MYRAA Studio AI Voice (Aoede - PC & Web Studio)</option>
-            <option value="google_neural">✨ Google Neural Studio Stream (Natural Sweet Tone)</option>
-            <option value="elevenlabs">🎙️ ElevenLabs Studio Voice (Ultra-Realistic)</option>
-            <option value="web_speech">🌐 Browser Neural Synthesis</option>
+            <option value="kokoro" selected>🌸 Kokoro-82M (Natural & Cute Companion - Offline Ready)</option>
+            <option value="aoede">✨ Gemini Aoede Studio (PC & Web Studio Voice)</option>
+            <option value="google_neural">🌟 Google Neural Studio Stream</option>
+            <option value="elevenlabs">🎙️ ElevenLabs Ultra-Realistic</option>
             <option value="system_tts">📱 Android System Phone TTS</option>
           </select>
+
+          <!-- Kokoro-82M Cute Voice Cards Grid -->
+          <div id="kokoroConfig" style="margin-top: 14px;">
+            <label class="form-label" style="margin-bottom: 8px; display: block;">Select Cute Companion Voice:</label>
+            <div class="kokoro-grid">
+              <!-- af_bella -->
+              <div class="kokoro-card active" data-voice="af_bella">
+                <div class="k-card-top">
+                  <span class="k-voice-tag">Warm & Soft</span>
+                  <span class="k-check">✓</span>
+                </div>
+                <div class="k-voice-name">af_bella</div>
+                <div class="k-voice-desc">Bahut hi warm, soft aur natural female voice. Perfect for daily companion talk.</div>
+              </div>
+
+              <!-- af_sky -->
+              <div class="kokoro-card" data-voice="af_sky">
+                <div class="k-card-top">
+                  <span class="k-voice-tag tag-cyan">Bubbly & Cute</span>
+                  <span class="k-check">✓</span>
+                </div>
+                <div class="k-voice-name">af_sky</div>
+                <div class="k-voice-desc">Thodi bubbly, young aur cute companion jaisi energetic awaaz.</div>
+              </div>
+
+              <!-- af_nicole -->
+              <div class="kokoro-card" data-voice="af_nicole">
+                <div class="k-card-top">
+                  <span class="k-voice-tag tag-pink">Whisper & Calm</span>
+                  <span class="k-check">✓</span>
+                </div>
+                <div class="k-voice-name">af_nicole</div>
+                <div class="k-voice-desc">Soft, whispery aur calm human tone. Intimate & comforting listening.</div>
+              </div>
+
+              <!-- af_heart -->
+              <div class="kokoro-card" data-voice="af_heart">
+                <div class="k-card-top">
+                  <span class="k-voice-tag tag-purple">Anime Caring</span>
+                  <span class="k-check">✓</span>
+                </div>
+                <div class="k-voice-name">af_heart</div>
+                <div class="k-voice-desc">Expressive, affectionate & loving anime heroine speech style.</div>
+              </div>
+            </div>
+
+            <!-- Optional Kokoro Server / Docker Endpoint -->
+            <div style="margin-top: 14px;">
+              <label class="form-label">Custom Kokoro Endpoint (Optional):</label>
+              <input type="text" id="inputKokoroEndpoint" class="text-input" placeholder="e.g. http://localhost:8880/v1/audio/speech" />
+              <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+                Works with any local Kokoro Docker container, Kokoro-FastAPI, or local server on port 3002.
+              </p>
+            </div>
+          </div>
 
           <!-- ElevenLabs Extra Options -->
           <div id="elevenLabsConfig" style="margin-top: 12px; display: none;">
@@ -245,22 +319,22 @@
 
           <div style="display: flex; gap: 12px; margin-top: 14px;">
             <div style="flex: 1;">
-              <label class="form-label" id="labelPitch">Voice Pitch: 1.25x</label>
-              <input type="range" id="rangePitch" min="0.8" max="1.6" step="0.05" value="1.25" style="width: 100%; margin-top: 6px;" />
+              <label class="form-label" id="labelPitch">Voice Pitch: 1.30x</label>
+              <input type="range" id="rangePitch" min="0.8" max="1.6" step="0.05" value="1.30" style="width: 100%; margin-top: 6px;" />
             </div>
             <div style="flex: 1;">
-              <label class="form-label" id="labelSpeed">Voice Speed: 1.0x</label>
-              <input type="range" id="rangeSpeed" min="0.8" max="1.4" step="0.05" value="1.0" style="width: 100%; margin-top: 6px;" />
+              <label class="form-label" id="labelSpeed">Voice Speed: 0.98x</label>
+              <input type="range" id="rangeSpeed" min="0.8" max="1.4" step="0.05" value="0.98" style="width: 100%; margin-top: 6px;" />
             </div>
           </div>
 
           <div style="display: flex; gap: 8px; margin-top: 16px;">
-            <button id="btnTestVoice" class="primary-btn" style="flex: 1;">🔊 Test Voice</button>
+            <button id="btnTestVoice" class="primary-btn" style="flex: 1;">🔊 Test Kokoro Voice</button>
             <button id="btnOpenTtsSettings" class="header-pill-btn" style="flex: 1; justify-content: center;">⚙️ Phone TTS</button>
           </div>
 
           <p style="font-size: 0.72rem; color: var(--text-muted); margin-top: 12px; line-height: 1.4;">
-            💡 <strong>Pro Tip:</strong> Agar phone ka standard robot voice aaye to <strong>"Phone TTS"</strong> par click karke Google Speech Services ka Hindi/Indian English voice data download karein ya ElevenLabs API connect karein.
+            🌸 <strong>Kokoro-82M:</strong> 100% natural, expressive, soft companion voice. No synthetic robot sound!
           </p>
         </div>
       </div>

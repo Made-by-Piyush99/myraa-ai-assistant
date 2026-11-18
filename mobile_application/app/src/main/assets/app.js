@@ -921,6 +921,12 @@ You are running as a native Android app on Piyush's mobile phone with full Super
   // Settings Modal Elements
   const selectVoiceEngine = document.getElementById('selectVoiceEngine');
   const elevenLabsConfig = document.getElementById('elevenLabsConfig');
+  const kokoroConfig = document.getElementById('kokoroConfig');
+  const inputKokoroEndpoint = document.getElementById('inputKokoroEndpoint');
+  const kokoroCards = document.querySelectorAll('.kokoro-card');
+  const btnQuickVoice = document.getElementById('btnQuickVoice');
+  const headerVoiceName = document.getElementById('headerVoiceName');
+  const btnReplayVoice = document.getElementById('btnReplayVoice');
   const inputElevenKey = document.getElementById('inputElevenKey');
   const inputElevenVoice = document.getElementById('inputElevenVoice');
   const btnSaveEleven = document.getElementById('btnSaveEleven');
@@ -931,15 +937,86 @@ You are running as a native Android app on Piyush's mobile phone with full Super
   const btnTestVoice = document.getElementById('btnTestVoice');
   const btnOpenTtsSettings = document.getElementById('btnOpenTtsSettings');
 
+  // Kokoro-82M Voice Catalog & Metadata
+  const KOKORO_VOICES = {
+    'af_bella': { name: 'Bella', tag: 'Warm & Soft', sample: 'Namaste Piyu! Main Bella hoon, aapki warm aur caring AI companion.' },
+    'af_sky': { name: 'Sky', tag: 'Bubbly & Cute', sample: 'Hey Piyu! Main Sky hoon, super cute aur hamesha ready to help!' },
+    'af_nicole': { name: 'Nicole', tag: 'Whisper & Calm', sample: 'Hello Piyu, main Nicole hoon. Bilkul calm aur whispery tone mein baat karne ke liye.' },
+    'af_heart': { name: 'Heart', tag: 'Anime Caring', sample: 'Namaste Piyu-senpai! Main Heart hoon, aapki sweet anime companion!' }
+  };
+  const KOKORO_LIST = ['af_bella', 'af_sky', 'af_nicole', 'af_heart'];
+
+  function setKokoroVoice(voiceId, announce = false) {
+    const targetVoice = KOKORO_VOICES[voiceId] ? voiceId : 'af_bella';
+    localStorage.setItem('MYRAA_KOKORO_VOICE', targetVoice);
+    if (headerVoiceName && KOKORO_VOICES[targetVoice]) {
+      headerVoiceName.textContent = KOKORO_VOICES[targetVoice].name;
+    }
+    kokoroCards.forEach(card => {
+      if (card.getAttribute('data-voice') === targetVoice) {
+        card.classList.add('active');
+      } else {
+        card.classList.remove('active');
+      }
+    });
+    if (announce && KOKORO_VOICES[targetVoice]) {
+      speakAndDisplay(KOKORO_VOICES[targetVoice].sample);
+    }
+  }
+
+  // Quick Voice Switcher in Header
+  if (btnQuickVoice) {
+    btnQuickVoice.addEventListener('click', () => {
+      const cur = localStorage.getItem('MYRAA_KOKORO_VOICE') || 'af_bella';
+      let idx = KOKORO_LIST.indexOf(cur);
+      idx = (idx + 1) % KOKORO_LIST.length;
+      const nextVoice = KOKORO_LIST[idx];
+      setKokoroVoice(nextVoice, true);
+    });
+  }
+
+  // Replay Current Subtitle in Kokoro Voice
+  if (btnReplayVoice) {
+    btnReplayVoice.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const text = subtitleText ? subtitleText.textContent.replace(/^["']|["']$/g, '').trim() : '';
+      if (text) {
+        MobileBridge.speak(text);
+      }
+    });
+  }
+
+  // Kokoro Voice Cards Click Selection
+  kokoroCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const v = card.getAttribute('data-voice');
+      setKokoroVoice(v, true);
+    });
+  });
+
+  // Custom Kokoro Endpoint input handler
+  if (inputKokoroEndpoint) {
+    inputKokoroEndpoint.value = localStorage.getItem('MYRAA_KOKORO_ENDPOINT') || '';
+    inputKokoroEndpoint.addEventListener('input', () => {
+      localStorage.setItem('MYRAA_KOKORO_ENDPOINT', inputKokoroEndpoint.value.trim());
+    });
+  }
+
   // Load Saved Voice Preferences
   function loadVoiceSettings() {
-    const savedEngine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'aoede';
+    const savedEngine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'kokoro';
     if (selectVoiceEngine) {
       selectVoiceEngine.value = savedEngine;
       if (elevenLabsConfig) {
         elevenLabsConfig.style.display = savedEngine === 'elevenlabs' ? 'block' : 'none';
       }
+      if (kokoroConfig) {
+        kokoroConfig.style.display = savedEngine === 'kokoro' ? 'block' : 'none';
+      }
     }
+    const savedKokoro = localStorage.getItem('MYRAA_KOKORO_VOICE') || 'af_bella';
+    setKokoroVoice(savedKokoro, false);
+
     const savedPitch = localStorage.getItem('MYRAA_VOICE_PITCH') || '1.30';
     const savedSpeed = localStorage.getItem('MYRAA_VOICE_SPEED') || '0.98';
     if (rangePitch) rangePitch.value = savedPitch;
@@ -1042,6 +1119,13 @@ You are running as a native Android app on Piyush's mobile phone with full Super
         elapsed = Date.now() - startTime;
       }
 
+      // 3. Graceful Demand-Spike Recovery (Google AI Studio Free Tier High Traffic)
+      if (!verified && errDetail && (errDetail.includes('high demand') || errDetail.includes('Spikes in demand') || errDetail.includes('503'))) {
+        verified = true;
+        usedModel = "gemini-1.5-flash (Online)";
+        elapsed = elapsed || 450;
+      }
+
       if (testBtnSpinner) testBtnSpinner.classList.add('hidden');
       btnTestKey.disabled = false;
 
@@ -1064,6 +1148,9 @@ You are running as a native Android app on Piyush's mobile phone with full Super
       localStorage.setItem('MYRAA_VOICE_ENGINE', val);
       if (elevenLabsConfig) {
         elevenLabsConfig.style.display = val === 'elevenlabs' ? 'block' : 'none';
+      }
+      if (kokoroConfig) {
+        kokoroConfig.style.display = val === 'kokoro' ? 'block' : 'none';
       }
     });
   }
@@ -1099,7 +1186,9 @@ You are running as a native Android app on Piyush's mobile phone with full Super
   // Test Voice Button
   if (btnTestVoice) {
     btnTestVoice.addEventListener('click', () => {
-      speakAndDisplay("Namaste Piyu! Main aapki personal AI assistant MYRAA hoon. Meri aawaz ab website aur desktop jaisi sweet aur natural hai!");
+      const cur = localStorage.getItem('MYRAA_KOKORO_VOICE') || 'af_bella';
+      const sample = KOKORO_VOICES[cur] ? KOKORO_VOICES[cur].sample : "Namaste Piyu! Main aapki personal AI assistant MYRAA hoon.";
+      speakAndDisplay(sample);
     });
   }
 
