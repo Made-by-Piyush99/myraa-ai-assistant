@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.provider.Settings;
 import android.webkit.JavascriptInterface;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -228,6 +229,79 @@ public class MyraaNativeBridge {
             }
         }
         return lastResponse.isEmpty() ? "{\"error\":{\"message\":\"No response from Gemini API\"}}" : lastResponse;
+    }
+
+    /**
+     * Synthesizes speech using Google Gemini's official Aoede Studio voice
+     * (the exact same voice as MYRAA on Desktop and Web).
+     */
+    @JavascriptInterface
+    public String synthesizeGeminiSpeech(String text, String apiKey) {
+        String cleanKey = apiKey != null ? apiKey.trim().replace("\"", "").replace("'", "").replaceAll("\\s+", "") : "";
+        if (cleanKey.isEmpty() || text == null || text.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            URL url = new URL("https://generativelanguage.googleapis.com/v1beta/interactions");
+            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("x-goog-api-key", cleanKey);
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(12000);
+            conn.setDoOutput(true);
+
+            JSONObject body = new JSONObject();
+            body.put("model", "gemini-3.8-flash-tts");
+
+            JSONArray inputArr = new JSONArray();
+            JSONObject userIn = new JSONObject();
+            userIn.put("type", "user_input");
+            JSONArray contentArr = new JSONArray();
+            JSONObject textObj = new JSONObject();
+            textObj.put("type", "text");
+            textObj.put("text", text);
+            contentArr.put(textObj);
+            userIn.put("content", contentArr);
+            inputArr.put(userIn);
+            body.put("input", inputArr);
+
+            JSONObject respFmt = new JSONObject();
+            respFmt.put("type", "audio");
+            respFmt.put("mime_type", "audio/wav");
+            respFmt.put("sample_rate", 24000);
+            body.put("response_format", respFmt);
+
+            JSONObject genCfg = new JSONObject();
+            JSONArray speechCfg = new JSONArray();
+            JSONObject vObj = new JSONObject();
+            vObj.put("voice", "Aoede");
+            speechCfg.put(vObj);
+            genCfg.put("speech_config", speechCfg);
+            body.put("generation_config", genCfg);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                os.flush();
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                InputStream is = conn.getInputStream();
+                BufferedReader r = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                JSONObject respJson = new JSONObject(sb.toString());
+                if (respJson.has("output_audio") && respJson.getJSONObject("output_audio").has("data")) {
+                    return respJson.getJSONObject("output_audio").getString("data");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @JavascriptInterface

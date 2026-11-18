@@ -28,8 +28,8 @@ public class DeviceManager {
     private final Context context;
     private TextToSpeech tts;
     private boolean isTtsReady = false;
-    private float currentPitch = 1.22f;
-    private float currentSpeed = 1.02f;
+    private float currentPitch = 1.30f;
+    private float currentSpeed = 0.98f;
 
     public DeviceManager(Context context) {
         this.context = context.getApplicationContext();

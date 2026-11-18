@@ -933,15 +933,15 @@ You are running as a native Android app on Piyush's mobile phone with full Super
 
   // Load Saved Voice Preferences
   function loadVoiceSettings() {
-    const savedEngine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'enhanced';
+    const savedEngine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'aoede';
     if (selectVoiceEngine) {
       selectVoiceEngine.value = savedEngine;
       if (elevenLabsConfig) {
         elevenLabsConfig.style.display = savedEngine === 'elevenlabs' ? 'block' : 'none';
       }
     }
-    const savedPitch = localStorage.getItem('MYRAA_VOICE_PITCH') || '1.25';
-    const savedSpeed = localStorage.getItem('MYRAA_VOICE_SPEED') || '1.0';
+    const savedPitch = localStorage.getItem('MYRAA_VOICE_PITCH') || '1.30';
+    const savedSpeed = localStorage.getItem('MYRAA_VOICE_SPEED') || '0.98';
     if (rangePitch) rangePitch.value = savedPitch;
     if (labelPitch) labelPitch.textContent = `Voice Pitch: ${savedPitch}x`;
     if (rangeSpeed) rangeSpeed.value = savedSpeed;
@@ -1099,7 +1099,7 @@ You are running as a native Android app on Piyush's mobile phone with full Super
   // Test Voice Button
   if (btnTestVoice) {
     btnTestVoice.addEventListener('click', () => {
-      speakAndDisplay("Namaste Piyu! Main aapki personal AI assistant MYRAA hoon. Kya ab meri aawaz aapko theek lag rahi hai?");
+      speakAndDisplay("Namaste Piyu! Main aapki personal AI assistant MYRAA hoon. Meri aawaz ab website aur desktop jaisi sweet aur natural hai!");
     });
   }
 

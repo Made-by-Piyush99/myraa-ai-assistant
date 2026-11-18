@@ -238,26 +238,121 @@ window.MobileBridge = {
     }
   },
 
-  speak: function(text, pitch, rate) {
-    var p = parseFloat(pitch || localStorage.getItem('MYRAA_VOICE_PITCH') || '1.25');
-    var s = parseFloat(rate || localStorage.getItem('MYRAA_VOICE_SPEED') || '1.0');
-    var engine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'enhanced';
+  speak: async function(text, pitch, rate) {
+    if (!text || !text.trim()) return;
+    var cleanText = text.replace(/[*#_~`]/g, '').trim();
+
+    var p = parseFloat(pitch || localStorage.getItem('MYRAA_VOICE_PITCH') || '1.30');
+    var s = parseFloat(rate || localStorage.getItem('MYRAA_VOICE_SPEED') || '0.98');
+    var engine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'aoede';
+    var apiKey = localStorage.getItem('MYRAA_API_KEY');
 
     // 1. ElevenLabs Studio AI Voice
-    var elevenKey = localStorage.getItem('MYRAA_ELEVEN_KEY');
-    var elevenVoice = localStorage.getItem('MYRAA_ELEVEN_VOICE') || '21m00Tcm4TlvDq8ikWAM';
-    if (engine === 'elevenlabs' && elevenKey && elevenKey.trim().length > 10) {
-      this.speakElevenLabs(text, elevenKey.trim(), elevenVoice.trim());
-      return;
+    if (engine === 'elevenlabs') {
+      var elevenKey = localStorage.getItem('MYRAA_ELEVEN_KEY');
+      var elevenVoice = localStorage.getItem('MYRAA_ELEVEN_VOICE') || '21m00Tcm4TlvDq8ikWAM';
+      if (elevenKey && elevenKey.trim().length > 10) {
+        this.speakElevenLabs(cleanText, elevenKey.trim(), elevenVoice.trim());
+        return;
+      }
     }
 
-    // 2. Enhanced Sweet Companion: Uses Web Speech Synthesis if browser has neural voice, else Android native
+    // 2. Google Gemini "Aoede" Studio Voice (Exact Desktop & Website Voice)
+    if (engine === 'aoede' && apiKey && apiKey.trim().length > 10) {
+      try {
+        if (this.isAndroid() && typeof window.MyraaNative.synthesizeGeminiSpeech === 'function') {
+          var base64Wav = window.MyraaNative.synthesizeGeminiSpeech(cleanText, apiKey.trim());
+          if (base64Wav && base64Wav.length > 100) {
+            this.playBase64Audio(base64Wav, 'audio/wav');
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Gemini Aoede synthesis notice:', e);
+      }
+    }
+
+    // 3. Google Neural Stream (Natural Sweet Tone - Zero Robot Sound)
+    if (engine === 'aoede' || engine === 'google_neural' || engine === 'enhanced') {
+      try {
+        var played = await this.speakGoogleNeural(cleanText);
+        if (played) return;
+      } catch (e) {
+        console.warn('Google Neural stream notice:', e);
+      }
+    }
+
+    // 4. Browser Web Speech Synthesis with Indian/Natural Female voices
     if (engine === 'web_speech' && 'speechSynthesis' in window) {
-      this.speakWebSpeech(text, p, s);
+      this.speakWebSpeech(cleanText, p, s);
       return;
     }
 
-    // 3. Android Native TTS
+    // 5. Native Android TTS fallback (High Pitch Anime Tuning)
+    this.speakNativeTts(cleanText, p, s);
+  },
+
+  speakGoogleNeural: function(text) {
+    return new Promise(function(resolve) {
+      try {
+        if (window.myraaCurrentAudio) {
+          try { window.myraaCurrentAudio.pause(); } catch (e) {}
+          window.myraaCurrentAudio = null;
+        }
+        var shortText = text.substring(0, 180);
+        var url = 'https://translate.google.com/translate_tts?ie=UTF-8&q=' + encodeURIComponent(shortText) + '&tl=hi&client=tw-ob';
+        var audio = new Audio(url);
+        window.myraaCurrentAudio = audio;
+        audio.onended = function() {
+          if (typeof setAvatarState === 'function') setAvatarState('idle');
+          var st = document.getElementById('statusText');
+          if (st) st.textContent = 'Tap Mic to Talk';
+        };
+        audio.play().then(function() {
+          if (typeof setAvatarState === 'function') setAvatarState('talking');
+          var st = document.getElementById('statusText');
+          if (st) st.textContent = 'MYRAA Speaking (Natural Voice)...';
+          resolve(true);
+        }).catch(function(err) {
+          console.warn('Google Neural playback notice:', err);
+          resolve(false);
+        });
+      } catch (e) {
+        resolve(false);
+      }
+    });
+  },
+
+  playBase64Audio: function(base64Data, mimeType) {
+    try {
+      if (window.myraaCurrentAudio) {
+        try { window.myraaCurrentAudio.pause(); } catch (e) {}
+        window.myraaCurrentAudio = null;
+      }
+      var audio = new Audio('data:' + (mimeType || 'audio/wav') + ';base64,' + base64Data);
+      window.myraaCurrentAudio = audio;
+      audio.onended = function() {
+        if (typeof setAvatarState === 'function') setAvatarState('idle');
+        var st = document.getElementById('statusText');
+        if (st) st.textContent = 'Tap Mic to Talk';
+      };
+      audio.play().then(function() {
+        if (typeof setAvatarState === 'function') setAvatarState('talking');
+        var st = document.getElementById('statusText');
+        if (st) st.textContent = 'MYRAA Speaking (Aoede Studio Voice)...';
+      }).catch(function(e) {
+        console.warn('Base64 audio playback notice:', e);
+      });
+      return true;
+    } catch (e) {
+      console.warn('playBase64Audio error:', e);
+      return false;
+    }
+  },
+
+  speakNativeTts: function(text, pitch, rate) {
+    var p = parseFloat(pitch || '1.30');
+    var s = parseFloat(rate || '0.98');
     if (this.isAndroid() && typeof window.MyraaNative.speak === 'function') {
       try {
         if (typeof window.MyraaNative.setVoiceSettings === 'function') {
@@ -269,8 +364,6 @@ window.MobileBridge = {
         console.warn('Native TTS error:', e);
       }
     }
-
-    // Fallback
     this.speakWebSpeech(text, p, s);
   },
 
