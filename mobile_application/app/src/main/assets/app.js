@@ -922,6 +922,12 @@ You are running as a native Android app on Piyush's mobile phone with full Super
   const selectVoiceEngine = document.getElementById('selectVoiceEngine');
   const elevenLabsConfig = document.getElementById('elevenLabsConfig');
   const kokoroConfig = document.getElementById('kokoroConfig');
+  const colabConfig = document.getElementById('colabConfig');
+  const inputColabUrl = document.getElementById('inputColabUrl');
+  const btnSaveColabUrl = document.getElementById('btnSaveColabUrl');
+  const btnTestColab = document.getElementById('btnTestColab');
+  const btnColabVoice = document.getElementById('btnColabVoice');
+  const subtitleVoiceTag = document.getElementById('subtitleVoiceTag');
   const inputKokoroEndpoint = document.getElementById('inputKokoroEndpoint');
   const kokoroCards = document.querySelectorAll('.kokoro-card');
   const btnQuickVoice = document.getElementById('btnQuickVoice');
@@ -936,6 +942,8 @@ You are running as a native Android app on Piyush's mobile phone with full Super
   const labelSpeed = document.getElementById('labelSpeed');
   const btnTestVoice = document.getElementById('btnTestVoice');
   const btnOpenTtsSettings = document.getElementById('btnOpenTtsSettings');
+
+  const DEFAULT_COLAB_URL = 'https://mistress-mile-showtimes-closed.trycloudflare.com/speak';
 
   // Kokoro-82M Voice Catalog & Metadata
   const KOKORO_VOICES = {
@@ -1002,11 +1010,44 @@ You are running as a native Android app on Piyush's mobile phone with full Super
     });
   }
 
+  // Colab Voice Button in Header
+  if (btnColabVoice) {
+    btnColabVoice.addEventListener('click', () => {
+      localStorage.setItem('MYRAA_VOICE_ENGINE', 'colab');
+      if (selectVoiceEngine) selectVoiceEngine.value = 'colab';
+      if (colabConfig) colabConfig.style.display = 'block';
+      if (kokoroConfig) kokoroConfig.style.display = 'none';
+      if (elevenLabsConfig) elevenLabsConfig.style.display = 'none';
+      if (subtitleVoiceTag) subtitleVoiceTag.textContent = '⚡ Colab Indic LoRA';
+      speakAndDisplay("Google Colab Indic LoRA voice active ho gaya!");
+    });
+  }
+
+  // Colab Save & Test Handlers
+  if (btnSaveColabUrl && inputColabUrl) {
+    btnSaveColabUrl.addEventListener('click', () => {
+      const u = inputColabUrl.value.trim() || DEFAULT_COLAB_URL;
+      localStorage.setItem('MYRAA_COLAB_VOICE_URL', u);
+      speakAndDisplay("Colab Voice Link save ho gaya hai Piyu!");
+    });
+  }
+  if (btnTestColab && inputColabUrl) {
+    btnTestColab.addEventListener('click', () => {
+      const u = inputColabUrl.value.trim() || DEFAULT_COLAB_URL;
+      localStorage.setItem('MYRAA_COLAB_VOICE_URL', u);
+      localStorage.setItem('MYRAA_VOICE_ENGINE', 'colab');
+      speakAndDisplay("Namaste Piyu! Main aapke Google Colab Indic LoRA server se bol rahi hoon. Meri aawaz kaisi lag rahi hai?");
+    });
+  }
+
   // Load Saved Voice Preferences
   function loadVoiceSettings() {
-    const savedEngine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'kokoro';
+    const savedEngine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'colab';
     if (selectVoiceEngine) {
       selectVoiceEngine.value = savedEngine;
+      if (colabConfig) {
+        colabConfig.style.display = savedEngine === 'colab' ? 'block' : 'none';
+      }
       if (elevenLabsConfig) {
         elevenLabsConfig.style.display = savedEngine === 'elevenlabs' ? 'block' : 'none';
       }
@@ -1014,6 +1055,14 @@ You are running as a native Android app on Piyush's mobile phone with full Super
         kokoroConfig.style.display = savedEngine === 'kokoro' ? 'block' : 'none';
       }
     }
+    if (subtitleVoiceTag) {
+      subtitleVoiceTag.textContent = savedEngine === 'colab' ? '⚡ Colab Indic LoRA' : (savedEngine === 'kokoro' ? '🌸 Kokoro-82M' : '✨ Studio Voice');
+    }
+
+    if (inputColabUrl) {
+      inputColabUrl.value = localStorage.getItem('MYRAA_COLAB_VOICE_URL') || DEFAULT_COLAB_URL;
+    }
+
     const savedKokoro = localStorage.getItem('MYRAA_KOKORO_VOICE') || 'af_bella';
     setKokoroVoice(savedKokoro, false);
 
@@ -1146,11 +1195,17 @@ You are running as a native Android app on Piyush's mobile phone with full Super
     selectVoiceEngine.addEventListener('change', () => {
       const val = selectVoiceEngine.value;
       localStorage.setItem('MYRAA_VOICE_ENGINE', val);
+      if (colabConfig) {
+        colabConfig.style.display = val === 'colab' ? 'block' : 'none';
+      }
       if (elevenLabsConfig) {
         elevenLabsConfig.style.display = val === 'elevenlabs' ? 'block' : 'none';
       }
       if (kokoroConfig) {
         kokoroConfig.style.display = val === 'kokoro' ? 'block' : 'none';
+      }
+      if (subtitleVoiceTag) {
+        subtitleVoiceTag.textContent = val === 'colab' ? '⚡ Colab Indic LoRA' : (val === 'kokoro' ? '🌸 Kokoro-82M' : '✨ Studio Voice');
       }
     });
   }

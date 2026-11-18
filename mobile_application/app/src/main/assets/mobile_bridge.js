@@ -244,10 +244,17 @@ window.MobileBridge = {
 
     var p = parseFloat(pitch || localStorage.getItem('MYRAA_VOICE_PITCH') || '1.30');
     var s = parseFloat(rate || localStorage.getItem('MYRAA_VOICE_SPEED') || '0.98');
-    var engine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'kokoro';
+    var engine = localStorage.getItem('MYRAA_VOICE_ENGINE') || 'colab';
     var apiKey = localStorage.getItem('MYRAA_API_KEY');
 
-    // 1. Kokoro-82M Voice Studio (Sabse Natural & Cute Companion Voices: af_bella, af_sky, af_nicole, af_heart)
+    // 1. Google Colab Chatterbox Indic LoRA Server (User's GPU Cloudflare Endpoint)
+    if (engine === 'colab' || !engine) {
+      var colabUrl = localStorage.getItem('MYRAA_COLAB_VOICE_URL') || 'https://mistress-mile-showtimes-closed.trycloudflare.com/speak';
+      var colabOk = await this.speakColab(cleanText, colabUrl);
+      if (colabOk) return;
+    }
+
+    // 2. Kokoro-82M Voice Studio (Sabse Natural & Cute Companion Voices: af_bella, af_sky, af_nicole, af_heart)
     if (engine === 'kokoro') {
       var voice = localStorage.getItem('MYRAA_KOKORO_VOICE') || 'af_bella';
       var customEndpoint = localStorage.getItem('MYRAA_KOKORO_ENDPOINT') || '';
@@ -298,6 +305,57 @@ window.MobileBridge = {
 
     // 6. Native Android TTS fallback (High Pitch Anime Tuning)
     this.speakNativeTts(cleanText, p, s);
+  },
+
+  /**
+   * Google Colab Chatterbox Multilingual Indic LoRA Voice Engine.
+   * Direct integration with user's Cloudflare tunnel endpoint:
+   * https://mistress-mile-showtimes-closed.trycloudflare.com/speak
+   */
+  speakColab: async function(text, colabUrl) {
+    if (!text || !text.trim()) return false;
+    var cleanText = text.replace(/[*#_~`]/g, '').trim();
+    var targetUrl = (colabUrl && colabUrl.trim().length > 5)
+      ? colabUrl.trim()
+      : 'https://mistress-mile-showtimes-closed.trycloudflare.com/speak';
+
+    var st = document.getElementById('statusText');
+    if (st) st.textContent = '⚡ Colab Indic Voice generating...';
+
+    // 1. Try Native Android Java HTTPS (zero CORS, direct stream buffering)
+    if (this.isAndroid() && typeof window.MyraaNative.synthesizeColabSpeech === 'function') {
+      try {
+        var base64Wav = window.MyraaNative.synthesizeColabSpeech(cleanText, targetUrl);
+        if (base64Wav && base64Wav.length > 200) {
+          var played = this.playBase64Audio(base64Wav, 'audio/wav', 'Colab Indic Voice');
+          if (played) return true;
+        }
+      } catch (err) {
+        console.warn('Native synthesizeColabSpeech notice:', err);
+      }
+    }
+
+    // 2. Direct JavaScript fetch to Colab Cloudflare endpoint
+    try {
+      var res = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: cleanText,
+          lang: 'hi'
+        })
+      });
+      if (res.ok) {
+        var blob = await res.blob();
+        var audioUrl = URL.createObjectURL(blob);
+        var playedUrl = await this.playAudioUrl(audioUrl, 'Colab Indic Voice');
+        if (playedUrl) return true;
+      }
+    } catch (e) {
+      console.warn('speakColab fetch notice:', e);
+    }
+
+    return false;
   },
 
   /**

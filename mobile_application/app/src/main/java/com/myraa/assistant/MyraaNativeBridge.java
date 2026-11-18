@@ -8,6 +8,7 @@ import android.webkit.JavascriptInterface;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -296,6 +297,59 @@ public class MyraaNativeBridge {
                 JSONObject respJson = new JSONObject(sb.toString());
                 if (respJson.has("output_audio") && respJson.getJSONObject("output_audio").has("data")) {
                     return respJson.getJSONObject("output_audio").getString("data");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Synthesizes speech using Google Colab / Cloudflare Indic LoRA FastAPI Server.
+     * Makes direct HTTPS call to the Colab tunnel without WebView CORS barriers.
+     * Returns Base64-encoded WAV audio data.
+     */
+    @JavascriptInterface
+    public String synthesizeColabSpeech(String text, String colabUrl) {
+        String targetUrl = (colabUrl != null && colabUrl.trim().length() > 5)
+            ? colabUrl.trim()
+            : "https://mistress-mile-showtimes-closed.trycloudflare.com/speak";
+        if (text == null || text.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            URL url = new URL(targetUrl);
+            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "audio/wav, audio/*, */*");
+            conn.setConnectTimeout(20000);
+            conn.setReadTimeout(30000);
+            conn.setDoOutput(true);
+
+            JSONObject payload = new JSONObject();
+            payload.put("text", text);
+            payload.put("lang", "hi");
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(payload.toString().getBytes(StandardCharsets.UTF_8));
+                os.flush();
+            }
+
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                InputStream is = conn.getInputStream();
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                byte[] temp = new byte[8192];
+                int read;
+                while ((read = is.read(temp)) != -1) {
+                    buffer.write(temp, 0, read);
+                }
+                byte[] wavBytes = buffer.toByteArray();
+                if (wavBytes.length > 200) {
+                    return android.util.Base64.encodeToString(wavBytes, android.util.Base64.NO_WRAP);
                 }
             }
         } catch (Exception e) {
