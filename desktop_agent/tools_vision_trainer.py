@@ -356,6 +356,165 @@ def clear_learned_landmarks(args: Dict[str, Any]) -> Dict[str, Any]:
     return {"result": "Learned UI landmarks memory cleared."}
 
 
+# ─── REAL-TIME CURSOR TRACKING & CONTEXTUAL ACTIONS ──────────────────────────
+
+@register("trackCursor")
+def track_cursor(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tracks and inspects the user's mouse cursor in real time.
+    Returns:
+    - Physical (x, y) coordinates and screen percentages.
+    - Name and type of the UI element directly underneath the cursor (e.g. Button, Input Box, Link).
+    - Window title and active application.
+    """
+    x, y = _get_current_pos()
+    sw, sh = _get_screen_size()
+    window_title = _get_active_window_title()
+
+    ctrl_name = "Unknown"
+    ctrl_type = "Unknown"
+    automation_id = ""
+    rect_dict: Dict[str, int] = {}
+
+    try:
+        import uiautomation as auto
+        ctrl = auto.ControlFromCursor()
+        if ctrl:
+            ctrl_name = str(ctrl.Name or "").strip()
+            ctrl_type = str(ctrl.ControlTypeName or "").strip()
+            automation_id = str(ctrl.AutomationId or "").strip()
+            r = ctrl.BoundingRectangle
+            if r:
+                rect_dict = {"left": int(r.left), "top": int(r.top), "right": int(r.right), "bottom": int(r.bottom)}
+    except Exception:
+        pass
+
+    pct_x = round((x / max(1, sw)) * 100, 1)
+    pct_y = round((y / max(1, sh)) * 100, 1)
+
+    elem_desc = f"'{ctrl_name}' ({ctrl_type})" if ctrl_name else f"{ctrl_type}"
+    summary = f"Cursor is at ({x}, {y}) [{pct_x}% X, {pct_y}% Y] hovering over {elem_desc} in window '{window_title}'."
+
+    return {
+        "x": x,
+        "y": y,
+        "normalized_x": round(x / max(1, sw), 4),
+        "normalized_y": round(y / max(1, sh), 4),
+        "percentage": {"x": pct_x, "y": pct_y},
+        "screen_size": {"width": sw, "height": sh},
+        "window_title": window_title,
+        "element_name": ctrl_name,
+        "element_type": ctrl_type,
+        "automation_id": automation_id,
+        "bounding_box": rect_dict,
+        "summary": summary,
+        "result": summary,
+    }
+
+
+@register("clickAtCursor")
+def click_at_cursor(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Clicks immediately at the mouse cursor's current position on the user's screen.
+    button: 'left' (default), 'right', 'middle'
+    clicks: 1 (default) or 2 (double click)
+    """
+    button = str(args.get("button", "left")).lower().strip()
+    clicks = int(args.get("clicks", 1))
+
+    cur_info = track_cursor({})
+    cx = cur_info["x"]
+    cy = cur_info["y"]
+
+    res = mouse_click({"x": cx, "y": cy, "button": button, "clicks": clicks})
+    elem_info = cur_info.get("element_name") or cur_info.get("element_type") or "element"
+
+    return {
+        "result": f"Clicked {button} ({clicks}x) at current cursor position ({cx}, {cy}) over {elem_info}.",
+        "x": cx,
+        "y": cy,
+        "button": button,
+        "clicks": clicks,
+        "element": elem_info,
+    }
+
+
+@register("typeAtCursor")
+def type_at_cursor(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Focuses the UI element directly under the mouse cursor by clicking it, then types the text.
+    text: The string to type (required).
+    press_enter: Whether to press Enter after typing (default False).
+    """
+    text = args.get("text")
+    if not text:
+        raise ToolError("Parameter 'text' is required.")
+
+    press_enter = bool(args.get("press_enter") or False)
+    cur_info = track_cursor({})
+    cx = cur_info["x"]
+    cy = cur_info["y"]
+
+    # Click to ensure focus caret is active inside the input field
+    mouse_click({"x": cx, "y": cy, "clicks": 1, "button": "left"})
+    time.sleep(0.06)
+
+    # Type the text
+    typed_res = keyboard_type({"text": text, "press_enter": press_enter})
+    elem_info = cur_info.get("element_name") or cur_info.get("element_type") or "input box"
+
+    return {
+        "result": f"Focused {elem_info} at cursor ({cx}, {cy}) and typed '{text}'" + (" [and pressed Enter]" if press_enter else "") + ".",
+        "x": cx,
+        "y": cy,
+        "element": elem_info,
+        "typed": text,
+        "press_enter": press_enter,
+    }
+
+
+@register("learnCurrentCursorPosition")
+def learn_current_cursor_position(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Records and learns the user's current cursor position as a named UI landmark in the training model.
+    target_name: The name/label to give this position (e.g. 'first name box', 'submit button').
+    """
+    target = str(args.get("target_name") or args.get("name") or "custom_target").strip()
+    cur_info = track_cursor({})
+    cx = cur_info["x"]
+    cy = cur_info["y"]
+    sw = cur_info["screen_size"]["width"]
+    sh = cur_info["screen_size"]["height"]
+    window_title = cur_info["window_title"]
+
+    db = _load_landmarks_db()
+    landmarks = db.get("landmarks", {})
+    norm_key = target.lower().replace(" ", "_")
+
+    landmarks[norm_key] = {
+        "target": target,
+        "x": cx,
+        "y": cy,
+        "normalized_x": round(cx / max(1, sw), 4),
+        "normalized_y": round(cy / max(1, sh), 4),
+        "window_title": window_title,
+        "element_name": cur_info.get("element_name", ""),
+        "element_type": cur_info.get("element_type", ""),
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "success_count": 1,
+    }
+    db["landmarks"] = landmarks
+    _save_landmarks_db(db)
+
+    return {
+        "result": f"Learned and saved position ({cx}, {cy}) as '{target}' on window '{window_title}'.",
+        "target": target,
+        "x": cx,
+        "y": cy,
+        "window_title": window_title,
+    }
+
+
 __all__ = [
     "visual_interact",
     "visual_move_and_verify",
@@ -363,4 +522,8 @@ __all__ = [
     "get_learned_landmarks",
     "clear_learned_landmarks",
     "move_and_verify_cursor",
+    "track_cursor",
+    "click_at_cursor",
+    "type_at_cursor",
+    "learn_current_cursor_position",
 ]

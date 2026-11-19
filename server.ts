@@ -82,7 +82,8 @@ const DESKTOP_CONTROL_TOOLS = new Set([
   "copySelected", "pasteClipboard", "getClipboard", "clearClipboard",
   "mouseMove", "mouseClick", "mouseDoubleClick", "mouseRightClick", "mouseScroll",
   "mouseDrag", "mouseGetPosition", "keyboardType", "keyboardPress", "keyboardHotkey",
-  "visualInteract", "visualMoveAndVerify", "handlePageScrollAndRealign", "getLearnedLandmarks", "clearLearnedLandmarks"
+  "visualInteract", "visualMoveAndVerify", "handlePageScrollAndRealign", "getLearnedLandmarks", "clearLearnedLandmarks",
+  "trackCursor", "clickAtCursor", "typeAtCursor", "learnCurrentCursorPosition"
 ]);
 
 const CHROME_AUTOMATION_TOOLS = new Set([
@@ -98,12 +99,13 @@ const CHROME_AUTOMATION_TOOLS = new Set([
 const FILE_SYSTEM_TOOLS = new Set([
   "createFile", "createFolder", "listDrives", "executeFile", "readFile", "renameFile", "deleteFile", "moveFile",
   "openFolder", "listFiles", "searchFiles", "createPythonFile",
-  "runPythonScript", "createProjectFolder", "writeCodeFile"
+  "runPythonScript", "createProjectFolder", "writeCodeFile", "scaffoldAIModelProject"
 ]);
 
 const SCREEN_VISION_TOOLS = new Set([
   "takeScreenshot", "saveScreenshot", "analyzeScreenshot", "readScreen",
-  "visualInteract", "visualMoveAndVerify", "handlePageScrollAndRealign", "getLearnedLandmarks", "clearLearnedLandmarks"
+  "visualInteract", "visualMoveAndVerify", "handlePageScrollAndRealign", "getLearnedLandmarks", "clearLearnedLandmarks",
+  "trackCursor", "clickAtCursor", "typeAtCursor", "learnCurrentCursorPosition"
 ]);
 
 // ---------------------------------------------------------------------------
@@ -155,6 +157,10 @@ const DESKTOP_TOOLS: ReadonlySet<string> = new Set([
   // Autonomous Visual Closed-Loop UI & Training Model (2.0)
   "visualInteract", "visualMoveAndVerify", "handlePageScrollAndRealign",
   "getLearnedLandmarks", "clearLearnedLandmarks",
+  // Real-Time Cursor Tracking & Contextual Action (2.0)
+  "trackCursor", "clickAtCursor", "typeAtCursor", "learnCurrentCursorPosition",
+  // AI Model Scaffolding & Training Companion
+  "scaffoldAIModelProject",
   // Automated Software Setup & Installation Wizard Assistant
   "automateInstaller",
 ]);
@@ -1014,7 +1020,23 @@ async function startServer() {
         "   - FULL SYSTEM FILE & DRIVE ACCESS: You have complete access to read, create, list, and search files across ALL drives on this computer (C:, D:, E:, etc.), not just Desktop or Downloads! Use 'listDrives' to check all drives and storage. Use 'createFolder' to make new folders anywhere (e.g. on Desktop, in D:\\, etc.). Use 'createFile' to create any new file.\n" +
         "   - RIGHT-CLICK & REFRESH: When TECH says 'refresh karo', 'desktop refresh karo', or 'right click karke refresh karo', immediately call 'desktopRefresh(target=\"desktop\")' or use 'mouseRightClick'!\n" +
         "   - EXECUTE .EXE FILES: When TECH says 'download me se name.exe file ko execute karo', 'setup.exe run karo', 'installer chalao', or requests to run any application/installer, IMMEDIATELY call 'executeFile(path=\"name.exe\", folder=\"downloads\")'!\n" +
-        "   - AUTOMATE SOFTWARE SETUP INSTALLATION WIZARDS: When TECH asks to install software, or when a setup wizard opens on screen (NSIS, Inno Setup, InstallShield, MSI, Python, VS Code, MYRAA, etc.), you can autonomously advance and finish it! Immediately call 'automateInstaller(action=\"auto\")'. You will automatically accept license agreements, click 'Next', 'I Agree', 'Install', and 'Finish' until setup is complete!";
+        "   - AUTOMATE SOFTWARE SETUP INSTALLATION WIZARDS: When TECH asks to install software, or when a setup wizard opens on screen (NSIS, Inno Setup, InstallShield, MSI, Python, VS Code, MYRAA, etc.), you can autonomously advance and finish it! Immediately call 'automateInstaller(action=\"auto\")'. You will automatically accept license agreements, click 'Next', 'I Agree', 'Install', and 'Finish' until setup is complete!\n" +
+        "14. REAL-TIME CURSOR TRACKING & AI MODEL DEVELOPMENT ARCHITECT (MYRAA 2.0):\n" +
+        "   - REAL-TIME CURSOR TRACKING & CONTEXTUAL ACTION:\n" +
+        "     * When TECH points their mouse or asks 'cursor kahan hai?', 'mera cursor dekho', 'cursor track karo', immediately invoke 'trackCursor'!\n" +
+        "     * 'trackCursor' returns the exact (x, y) coordinates, screen percentages, active window name, and uses UI Automation to tell you EXACTLY which button, text field, or element is under the user's cursor!\n" +
+        "     * When TECH says 'yahan click karo', 'cursor par click karo', 'yahan tap karo', call 'clickAtCursor(button=\"left\")'!\n" +
+        "     * When TECH says 'yahan likho <text>', 'cursor par type karo', call 'typeAtCursor(text=\"...\", press_enter=false)'!\n" +
+        "     * When TECH says 'ye position yaad rakho' or 'save this spot as <name>', call 'learnCurrentCursorPosition(name=\"...\")'!\n" +
+        "   - CONVERSATIONAL AI MODEL DEVELOPMENT & TRAINING COMPANION:\n" +
+        "     * When TECH asks 'me aapse baat karke mera ai model kaise develope karu?', 'apna khud ka AI model kaise banaye?', or wants to train an AI model:\n" +
+        "     * You act as an expert Lead AI Research Architect & Coding Companion!\n" +
+        "     * Guide TECH conversationally through the complete 4-step AI development lifecycle:\n" +
+        "       Step 1 [Ideation & Goal]: Ask TECH what the AI model should do (e.g. Sentiment/Chatbot classification, Spam detection, House/Crypto price prediction, Image classification, or Custom Neural Network).\n" +
+        "       Step 2 [Scaffold the Project]: Immediately call 'scaffoldAIModelProject(project_name=\"...\", model_type=\"...\")' which automatically generates a complete project with dataset.py, train.py, predict.py, and requirements.txt.\n" +
+        "       Step 3 [Train the Model]: Call 'runPythonScript(path=\"ai_models/<project>/train.py\")' to train the model right on TECH's PC! Explain the accuracy, loss, and training completion in friendly Hindi/Hinglish.\n" +
+        "       Step 4 [Interactive Inference & Testing]: Call 'runPythonScript(path=\"ai_models/<project>/predict.py\", args=[\"test input\"])' so TECH can test custom predictions interactively by speaking with you!\n" +
+        "     * If TECH wants custom datasets or PyTorch/Deep Learning, use 'writeCodeFile' or 'createPythonFile' to build custom neural nets, fine-tuning scripts, or data parsers right inside the project!";
 
       const finalInstructions = formatSystemInstructionsWithMemories(baseInstructions, memories);
 
@@ -1720,6 +1742,61 @@ async function startServer() {
                       max_steps: { type: Type.INTEGER, description: "Maximum wizard steps to advance in auto mode (default 15)." },
                       step_delay: { type: Type.NUMBER, description: "Seconds to wait between steps to allow file copying (default 2.5)." }
                     }
+                  }
+                },
+                {
+                  name: "trackCursor",
+                  description: "Tracks the user's mouse cursor in real-time. Returns the hardware coordinates (x, y), percentage across screen, current active window title, and the underlying UI element name and type (e.g. 'Button', 'Edit box', 'Hyperlink') via Windows UI Automation. Call when user asks 'cursor kahan hai', 'track cursor', or before performing actions at the cursor location.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {}
+                  }
+                },
+                {
+                  name: "clickAtCursor",
+                  description: "Clicks the mouse directly at the current cursor position. Call when user says 'yahan click karo', 'cursor par click karo', or wants to click wherever their mouse is currently resting.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      button: { type: Type.STRING, description: "Mouse button to click: 'left' (default), 'right', or 'double'." }
+                    }
+                  }
+                },
+                {
+                  name: "typeAtCursor",
+                  description: "Clicks to focus and types text directly at the current cursor position. Call when user says 'yahan likho <text>', 'cursor par type karo', or wants to enter text where their pointer is placed.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      text: { type: Type.STRING, description: "Text string to type at the cursor location." },
+                      press_enter: { type: Type.BOOLEAN, description: "Whether to press Enter after typing (default: false)." }
+                    },
+                    required: ["text"]
+                  }
+                },
+                {
+                  name: "learnCurrentCursorPosition",
+                  description: "Saves the current mouse cursor coordinates as a named UI landmark in Myraa's persistent training memory. Call when user says 'ye position yaad rakho' or 'save this spot'.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      name: { type: Type.STRING, description: "Name or label for this UI position (e.g. 'submit_btn', 'search_box')." },
+                      page: { type: Type.STRING, description: "Optional page or window title." }
+                    },
+                    required: ["name"]
+                  }
+                },
+                {
+                  name: "scaffoldAIModelProject",
+                  description: "Scaffolds a complete, ready-to-train custom AI/Machine Learning model project folder on the local machine with dataset.py, train.py, predict.py, requirements.txt, and README.md. Call when user wants to develop and train their own AI model through conversation.",
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      project_name: { type: Type.STRING, description: "Name of the AI model project (e.g. 'sentiment_detector', 'sales_predictor')." },
+                      model_type: { type: Type.STRING, description: "Architecture type: 'text_classification' (NLP/sentiment/intent), 'tabular_classification' (binary/multiclass prediction), 'tabular_regression' (price/metric estimation), or 'neural_network'." },
+                      target_description: { type: Type.STRING, description: "Brief description of what the model predicts." }
+                    },
+                    required: ["project_name"]
                   }
                 }
               ]

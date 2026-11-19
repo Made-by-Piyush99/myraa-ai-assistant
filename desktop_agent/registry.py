@@ -153,6 +153,7 @@ DESKTOP_TOOL_NAMES = [
     "runPythonScript",
     "createProjectFolder",
     "writeCodeFile",
+    "scaffoldAIModelProject",
     # system information
     "systemInfo",
     "gpuInfo",
@@ -171,6 +172,11 @@ DESKTOP_TOOL_NAMES = [
     "handlePageScrollAndRealign",
     "getLearnedLandmarks",
     "clearLearnedLandmarks",
+    # Real-Time Cursor Tracking & Contextual Action (2.0)
+    "trackCursor",
+    "clickAtCursor",
+    "typeAtCursor",
+    "learnCurrentCursorPosition",
     # Automated Software Setup & Installation Wizard Assistant
     "automateInstaller",
 ]
