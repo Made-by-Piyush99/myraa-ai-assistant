@@ -44,14 +44,32 @@ let splashWindow = null;
 let isQuitting = false;
 
 // ---------------------------------------------------------------------------
+// File logger for Electron main process
+// ---------------------------------------------------------------------------
+const dataDir = app.getPath('userData');
+const debugLogPath = path.join(dataDir, 'logs', 'electron-debug.log');
+try { fs.mkdirSync(path.join(dataDir, 'logs'), { recursive: true }); } catch {}
+
+function mainLog(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  try {
+    fs.appendFileSync(debugLogPath, line);
+  } catch {}
+  process.stdout.write(`[main] ${msg}\n`);
+}
+
+// ---------------------------------------------------------------------------
 // Single-instance guard — second launches focus the existing window instead of
 // starting a second backend on the same port.
 // ---------------------------------------------------------------------------
+mainLog(`Electron starting up. isPackaged=${app.isPackaged}, execPath=${process.execPath}`);
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
+  mainLog('Failed to get single instance lock. Quitting.');
   app.quit();
 } else {
   app.on('second-instance', () => {
+    mainLog('second-instance event received');
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
@@ -145,20 +163,29 @@ function stopBackend() {
 /** Poll the backend until it answers, or reject on timeout. */
 function waitForBackend(timeoutMs) {
   const deadline = Date.now() + timeoutMs;
+  mainLog(`waitForBackend started with timeout ${timeoutMs}ms for ${SERVER_ORIGIN}`);
+  let attempt = 0;
   return new Promise((resolve, reject) => {
     const tryOnce = () => {
+      attempt++;
+      mainLog(`waitForBackend attempt #${attempt}`);
       const req = http.get(SERVER_ORIGIN, (res) => {
+        mainLog(`waitForBackend attempt #${attempt} success: statusCode=${res.statusCode}`);
         res.resume();
         resolve();
       });
-      req.on('error', () => {
+      req.on('error', (err) => {
+        mainLog(`waitForBackend attempt #${attempt} error: ${err.message}`);
         if (Date.now() > deadline) {
-          reject(new Error('Backend did not become ready in time.'));
+          reject(new Error(`Backend did not become ready in time: ${err.message}`));
         } else {
           setTimeout(tryOnce, 400);
         }
       });
-      req.setTimeout(2000, () => req.destroy());
+      req.setTimeout(2000, () => {
+        mainLog(`waitForBackend attempt #${attempt} timeout`);
+        req.destroy(new Error('timeout'));
+      });
     };
     tryOnce();
   });
@@ -168,6 +195,7 @@ function waitForBackend(timeoutMs) {
 // Windows
 // ---------------------------------------------------------------------------
 function createSplashWindow() {
+  mainLog('createSplashWindow called');
   splashWindow = new BrowserWindow({
     width: 420,
     height: 300,
@@ -182,10 +210,14 @@ function createSplashWindow() {
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   splashWindow.loadFile(path.join(__dirname, 'splash.html'));
-  splashWindow.on('closed', () => (splashWindow = null));
+  splashWindow.on('closed', () => {
+    mainLog('splashWindow closed');
+    splashWindow = null;
+  });
 }
 
 function createMainWindow() {
+  mainLog('createMainWindow called');
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -220,44 +252,52 @@ function createMainWindow() {
     return { action: 'allow' };
   });
 
-  const revealMain = () => {
+  const revealMain = (trigger) => {
+    mainLog(`revealMain triggered by: ${trigger}`);
     if (splashWindow) {
       try {
         splashWindow.close();
-      } catch {
-        /* already closed */
+      } catch (err) {
+        mainLog(`splashWindow close error: ${err.message}`);
       }
       splashWindow = null;
     }
     if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainLog('mainWindow.show() executing');
       mainWindow.show();
       mainWindow.focus();
     }
   };
 
-  mainWindow.once('ready-to-show', revealMain);
+  mainWindow.once('ready-to-show', () => revealMain('ready-to-show'));
 
   // Fallback: If did-finish-load fires, don't leave the user stuck on the splash screen
   mainWindow.webContents.once('did-finish-load', () => {
-    setTimeout(revealMain, 400);
+    mainLog('mainWindow did-finish-load event fired');
+    setTimeout(() => revealMain('did-finish-load'), 400);
   });
 
-  // Safety fallback: guaranteed reveal after 6 seconds so it never stays stuck
-  setTimeout(revealMain, 6000);
+  // Safety fallback: guaranteed reveal after 5 seconds so it never stays stuck
+  setTimeout(() => revealMain('timeout-fallback-5s'), 5000);
 
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-    console.error(`[Electron] Failed to load ${validatedURL}: ${errorDescription} (${errorCode})`);
+    mainLog(`[Electron] Failed to load ${validatedURL}: ${errorDescription} (${errorCode})`);
     if (errorCode === -102 || errorCode === -105 || errorCode === -106) {
       setTimeout(() => {
         if (mainWindow && !mainWindow.isDestroyed()) {
+          mainLog(`Retrying loadURL: ${SERVER_ORIGIN}`);
           mainWindow.loadURL(SERVER_ORIGIN);
         }
       }, 1000);
     }
   });
 
-  mainWindow.on('closed', () => (mainWindow = null));
+  mainWindow.on('closed', () => {
+    mainLog('mainWindow closed');
+    mainWindow = null;
+  });
 
+  mainLog(`Loading URL into mainWindow: ${SERVER_ORIGIN}`);
   mainWindow.loadURL(SERVER_ORIGIN);
 }
 
@@ -265,6 +305,7 @@ function createMainWindow() {
 // Bootstrap sequence
 // ---------------------------------------------------------------------------
 async function bootstrap() {
+  mainLog('bootstrap started');
   app.setAppUserModelId('com.myraa.desktop');
 
   // -------------------------------------------------------------------------
