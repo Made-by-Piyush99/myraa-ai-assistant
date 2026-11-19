@@ -234,10 +234,11 @@ function spawnDesktopAgent(): void {
     return;
   }
   try {
+    const appRoot = process.env.MYRAA_APP_ROOT || process.cwd();
     const child = spawn(
       py,
       ["-m", "uvicorn", "desktop_agent.main:app", "--host", "127.0.0.1", "--port", "8765"],
-      { cwd: process.cwd(), detached: true, stdio: "ignore", windowsHide: true, env: agentEnv }
+      { cwd: appRoot, detached: true, stdio: "ignore", windowsHide: true, env: agentEnv }
     );
     child.unref();
     logStartup(`AGENT_SPAWN python pid=${child.pid}`);
@@ -2010,8 +2011,14 @@ async function startServer() {
     }
   });
 
+  // Base app root for assets & static dist files (survives both dev & packaged electron)
+  const appRoot = process.env.MYRAA_APP_ROOT || process.cwd();
+
   // Serve custom static assets folder
-  app.use("/assets", express.static(path.join(process.cwd(), "assets")));
+  const assetsPath = fs.existsSync(path.join(appRoot, "assets"))
+    ? path.join(appRoot, "assets")
+    : path.join(process.cwd(), "assets");
+  app.use("/assets", express.static(assetsPath));
 
   // Express Static assets / Vite Dev Middleware configuration
   if (process.env.NODE_ENV !== "production") {
@@ -2024,10 +2031,17 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = fs.existsSync(path.join(appRoot, "dist"))
+      ? path.join(appRoot, "dist")
+      : path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get("*", (req, res) => {
+      const indexPath = path.join(distPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send(`MYRAA Error: index.html not found in ${distPath}`);
+      }
     });
   }
 

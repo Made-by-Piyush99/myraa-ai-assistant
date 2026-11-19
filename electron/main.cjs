@@ -24,7 +24,7 @@ const fs = require('fs');
 
 // --- Constants -------------------------------------------------------------
 const SERVER_PORT = 3000;
-const SERVER_ORIGIN = `http://localhost:${SERVER_PORT}`;
+const SERVER_ORIGIN = `http://127.0.0.1:${SERVER_PORT}`;
 const SERVER_READY_TIMEOUT_MS = 40_000;
 
 // In development we run from the repo root; when packaged the app files live in
@@ -102,6 +102,16 @@ function startBackend() {
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
+
+  const backendLogFile = path.join(dataDir, 'logs', 'backend.log');
+  try {
+    fs.mkdirSync(path.join(dataDir, 'logs'), { recursive: true });
+    const logStream = fs.createWriteStream(backendLogFile, { flags: 'a' });
+    serverProcess.stdout?.pipe(logStream);
+    serverProcess.stderr?.pipe(logStream);
+  } catch {
+    /* file logging is best-effort */
+  }
 
   serverProcess.stdout?.on('data', (d) => process.stdout.write(`[server] ${d}`));
   serverProcess.stderr?.on('data', (d) => process.stderr.write(`[server] ${d}`));
@@ -198,17 +208,52 @@ function createMainWindow() {
   // Open external links (http/https to non-local hosts) in the real browser
   // instead of navigating the app window.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http') && !url.startsWith(SERVER_ORIGIN)) {
+    if (
+      url.startsWith('http') &&
+      !url.startsWith(SERVER_ORIGIN) &&
+      !url.includes(`localhost:${SERVER_PORT}`) &&
+      !url.includes(`127.0.0.1:${SERVER_PORT}`)
+    ) {
       shell.openExternal(url);
       return { action: 'deny' };
     }
     return { action: 'allow' };
   });
 
-  mainWindow.once('ready-to-show', () => {
-    if (splashWindow) splashWindow.close();
-    mainWindow?.show();
-    mainWindow?.focus();
+  const revealMain = () => {
+    if (splashWindow) {
+      try {
+        splashWindow.close();
+      } catch {
+        /* already closed */
+      }
+      splashWindow = null;
+    }
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  };
+
+  mainWindow.once('ready-to-show', revealMain);
+
+  // Fallback: If did-finish-load fires, don't leave the user stuck on the splash screen
+  mainWindow.webContents.once('did-finish-load', () => {
+    setTimeout(revealMain, 400);
+  });
+
+  // Safety fallback: guaranteed reveal after 6 seconds so it never stays stuck
+  setTimeout(revealMain, 6000);
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[Electron] Failed to load ${validatedURL}: ${errorDescription} (${errorCode})`);
+    if (errorCode === -102 || errorCode === -105 || errorCode === -106) {
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.loadURL(SERVER_ORIGIN);
+        }
+      }, 1000);
+    }
   });
 
   mainWindow.on('closed', () => (mainWindow = null));
